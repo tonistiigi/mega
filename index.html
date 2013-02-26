@@ -7,6 +7,7 @@
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <script type="text/javascript" charset="utf-8" src="/bundle.js"></script>
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -19,7 +20,7 @@
 
         <header>
           <h1>Mega</h1>
-          <h2>Unofficial Node.js SDK for Mega demo page</h2>
+          <h2>Unofficial Node.js SDK for Mega / Demo page</h2>
         </header>
 
         <section id="downloads" class="clearfix">
@@ -30,6 +31,17 @@
         <hr>
 
         <section id="main_content">
+          
+          <h2>Access file by URL:</h2>
+          
+          <label>File URL:</label>
+          <input type="text" placeholder="https://mega.co.nz/#!linkid!key" on-change="urlchange">
+          <div class="error" data-show="url_error" data-text="url_error"></div>
+          <div class="file_info" data-show="url_success">
+            <div>Name: <b data-text="name"></b></div>
+            <div>Size: <b data-text="size"></b>B</div>
+          </div>
+          
         </section>
       </div>
     </div>

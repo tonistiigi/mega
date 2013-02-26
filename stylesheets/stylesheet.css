@@ -369,3 +369,34 @@ footer a:hover {
 
 /* Mobile Portrait Size to Mobile Landscape Size (devices and browsers) */
 @media only screen and (max-width: 479px) {}
+
+
+input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  width: 500px;
+  font-size: .8em;
+}
+label {
+  padding: 3px;
+}
+.hide {
+  display: none;
+}
+.show {
+  display: block;
+}
+.error {
+  color: #c00;
+  padding: 3px;
+  font-weight: bold;
+}
+.error::before {
+  content: 'Error: '
+}
+.file_info {
+  padding: 3px;
+}
+b {
+  font-weight: bold;
+}
