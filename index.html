@@ -10,7 +10,7 @@
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-    <title>Mega by tonistiigi</title>
+    <title>Mega</title>
   </head>
 
   <body>
@@ -19,210 +19,18 @@
 
         <header>
           <h1>Mega</h1>
-          <h2>Node.js SDK for Mega (Unofficial)</h2>
+          <h2>Unofficial Node.js SDK for Mega demo page</h2>
         </header>
 
         <section id="downloads" class="clearfix">
-          <a href="https://github.com/tonistiigi/mega/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
-          <a href="https://github.com/tonistiigi/mega/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
           <a href="https://github.com/tonistiigi/mega" id="view-on-github" class="button"><span>View on GitHub</span></a>
+          <a href="https://npmjs.org/package/mega" id="view-on-npm" class="button"><span>View on NPM</span></a>
         </section>
 
         <hr>
 
         <section id="main_content">
-          <p><a href="http://travis-ci.org/tonistiigi/mega"><img src="https://secure.travis-ci.org/tonistiigi/mega.png" alt="Build Status"></a></p>
-
-<h2>Read first</h2>
-
-<ul>
-<li>This is all unofficial, based on <a href="https://mega.co.nz/#developers">developer guide</a> and site source.</li>
-<li>Official SDK will probably be released in the future. You may want to wait.</li>
-<li>Only part of the API is implemented.</li>
-<li>Crypto is mostly ported from browser code and isn't optimal. Probably some of it could be done with openssl, <a href="https://github.com/Obvious/ursa">ursa</a> or <a href="https://github.com/gwjjeff/cryptojs.git">cryptojs</a> or the algorithms could at least be ported to use Buffer format, but this is no way a priority.</li>
-<li>If you use it for something make sure you agree with Mega's <a href="https://mega.co.nz/#terms">Terms of Service</a>.</li>
-</ul><h2>Installation</h2>
-
-<pre><code>npm install mega
-</code></pre>
-
-<pre><code>var mega = require('mega')
-</code></pre>
-
-<p>See examples directory for quick start.</p>
-
-<h2>Missing functionality</h2>
-
-<ul>
-<li>No sharing features</li>
-<li>Missing file management: move, mkdir, symlink etc.</li>
-</ul><h2>API</h2>
-
-<h3>var storage = mega([options], [readyCallback])</h3>
-
-<p>Create new connection instance to Mega.</p>
-
-<p><strong>Supported options:</strong></p>
-
-<p><code>email</code> - User login email.</p>
-
-<p><code>password</code> - User password.</p>
-
-<p><code>keepalive</code> - Keep connection open to receive server-to-client requests that will be mapped to events. Defaults to true.</p>
-
-<p><code>autoload</code> - Load in file structure. Defaults to true.</p>
-
-<p>If you don't specify email/password then temporary account will be created. Once connection closes for temporary account you cannot access same account again so you need to save a link to file. Temporary accounts regularly get deleted.</p>
-
-<p><strong>After <code>readyCallback()</code> or <code>ready</code> event fires storage has following properties:</strong></p>
-
-<p><code>name</code> - Account owner name</p>
-
-<p><code>key</code> - Account master key</p>
-
-<p><code>rsaPrivateKey</code> - RSA private Key</p>
-
-<p><code>sid</code> - Current session ID</p>
-
-<p><code>files</code> - Hash of <code>File</code> objects by node ID-s.</p>
-
-<p><code>root</code> - <code>File</code> object for Cloud Drive main directory</p>
-
-<p><code>trash</code> - <code>File</code> object for Rubbish bin</p>
-
-<p><code>inbox</code> - <code>File</code> object for Inbox</p>
-
-<p><code>mounts</code> - Array of all top level directories</p>
-
-<h3>storage.upload(options | name, [buffer], [cb])</h3>
-
-<pre><code>fs.createReadStream('myfile.txt').pipe(storage.upload('myfile.txt'))
-</code></pre>
-
-<p>Upload a file to Mega. You can pass in buffer data or just pipe data into it. Callback returns uploaded file object. If you don't specify callback you can listen for <code>complete</code> event to get the file handle.</p>
-
-<p><strong>Supported options:</strong></p>
-
-<p><code>name</code> - File name <em>required</em></p>
-
-<p><code>attributes</code> - Object of file attributes.</p>
-
-<p><code>size</code> - File size. Note that because Mega's API needs final data length before uploading can start, streaming only fully works if you specify the size of your data. Otherwise it needs to first buffer your data to determine the size.</p>
-
-<p><code>target</code> - Target directory file object or node ID. Defaults to <code>storage.root</code>.</p>
-
-<h3>storage.reload(cb)</h3>
-
-<p>Reloads files tree. No need to call this if <code>autoload</code> is used.</p>
-
-<h3>Events:</h3>
-
-<p>These events fire on file changes when <code>keepalive</code> is used. The changes can be triggered from any session connected to the same account.</p>
-
-<p><code>add</code> - New file/dir was added. Parameters: file.</p>
-
-<p><code>move</code> - File was moved to another dir. Parameters: file, olddir.</p>
-
-<p><code>delete</code> - File was deleted. Parameters: file.</p>
-
-<p><code>update</code> - File was changed(renamed). Parameters: file.</p>
-
-<h3>mega.file(url | opt)</h3>
-
-<pre><code>var file = mega.file('https://mega....')
-</code></pre>
-
-<p>Returns file object based on download URL or options. Options can be <code>downloadId</code> and <code>key</code>.</p>
-
-<h3>File</h3>
-
-<p><strong>Properties:</strong></p>
-
-<p><code>name</code> - File name</p>
-
-<p><code>attributes</code> - Object of attributes</p>
-
-<p><code>size</code> - File size</p>
-
-<p><code>key</code> - File key(buffer)</p>
-
-<p><code>timestamp</code> - File creation time</p>
-
-<p><code>nodeId</code> - File ID</p>
-
-<p><code>downloadId</code> - Link ID to file. Only if created from link.</p>
-
-<p><code>directory</code> - Boolean if file is directory.</p>
-
-<p><code>children</code> - Array of files for directories.</p>
-
-<h3>file.download([cb])</h3>
-
-<p>Read file contents.</p>
-
-<pre><code>file.download().pipe(fs.createWriteStream('myfile.txt'))
-
-file.download(function(err, data) {
-  // data is buffer
-})
-</code></pre>
-
-<h3>file.link([noKey], cb)</h3>
-
-<p>Make download link for a file.</p>
-
-<pre><code>file.link(function(err, url) {
-  // url: https://mega.co.nz/#!downloadId!key
-})
-</code></pre>
-
-<h3>file.delete(cb)</h3>
-
-<p>Delete file permanently.</p>
-
-<pre><code>file.delete(function(err) {
-  // deleted.
-})
-</code></pre>
-
-<h3>file.loadAttributes(cb)</h3>
-
-<p>Download and decrypt file attributes. Attributes normally contain file name("n"), but it seems you can put anything you want in there.</p>
-
-<p>Only makes sense when file is created from download link with <code>mega.file(url)</code>, otherwise attributes are already loaded/decrypted.</p>
-
-<pre><code>mega.file(url).loadAttributes(function(err, file) {
-  // file.name
-  // file.size
-  // file.attributes
-})
-</code></pre>
-
-<h3>Events:</h3>
-
-<p>Same events as for Storage objects. Only trigger for a specific file.</p>
-
-<p><code>move</code> - File was moved to another dir. Parameters: olddir.</p>
-
-<p><code>delete</code> - File was deleted.</p>
-
-<p><code>update</code> - File was changed(renamed).</p>
-
-<h3>mega.encrypt([key]) / mega.decrypt(key)</h3>
-
-<p>Lower level duplex streams. These could be used if you want to do network traffic and crypto on different time.</p>
-
-<p>Takes in encrypted file data and outputs decrypted data and vice versa. Also does MAC verification / generation.</p>
-
-<p>Note that if you specify key for <code>encrypt()</code> it needs to be 192bit. Other 64bit are for the MAC. You can later read the full key from the <code>key</code> property of the stream.</p>
         </section>
-
-        <footer>
-          Mega is maintained by <a href="https://github.com/tonistiigi">tonistiigi</a><br>
-          This page was generated by <a href="http://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.
-        </footer>
-
-        
       </div>
     </div>
   </body>
