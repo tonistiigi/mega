@@ -1,0 +1,11 @@
+{
+  "name": "mega-gh-pages",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "mega": "*",
+    "reactive-component": "*",
+    "jquery-browserify": "*",
+    "emitter": "*",
+  }
+}
