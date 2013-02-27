@@ -6,6 +6,6 @@
     "mega": "*",
     "reactive-component": "*",
     "jquery-browserify": "*",
-    "emitter": "*",
+    "emitter": "*"
   }
 }
