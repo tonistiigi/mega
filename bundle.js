@@ -28,6 +28,20 @@ function login(email, password) {
     }
     update({storage_error: false, files: storage.mounts})
   })
+  storage.on('update', function(f) {
+    f.emit('change name', f.name)
+  })
+  storage.on('add', function(f) {
+    f.parent.emit('change children', f.parent.children)
+  })
+  storage.on('delete', function(f) {
+    f.parent.emit('change children', f.parent.children)
+  })
+  storage.on('move', function(f, from) {
+    from.emit('change children', from.children)
+    f.parent.emit('change children', f.parent.children)
+  })
+
 }
 
 function typeToString(type) {
@@ -47,12 +61,16 @@ function emptyIfUndefined(val) {
 function renderFile(file, el) {
   var tmpl = el.cloneNode(true)
   reactive(el, file, {typeToString: typeToString, emptyIfUndefined: emptyIfUndefined})
-  if (file.children) {
-    var c = $(el).find('.children')
-    for (var i = 0; i < file.children.length; i++) {
-      c.append(renderFile(file.children[i], tmpl.cloneNode(true)))
+  file.on('change children', function(children) {
+    if (children) {
+      var c = $(el).find('.children')
+      c.empty()
+      for (var i = 0; i < children.length; i++) {
+        c.append(renderFile(children[i], tmpl.cloneNode(true)))
+      }
     }
-  }
+  })
+  file.emit('change children', file.children)
   return el
 }
 
@@ -523,7 +541,12 @@ function Buffer(subject, encoding, offset) {
     // Treat array-ish objects as a byte array.
     if (isArrayIsh(subject)) {
       for (var i = 0; i < this.length; i++) {
-        this.parent[i + this.offset] = subject[i];
+        if (subject instanceof Buffer) {
+          this.parent[i + this.offset] = subject.readUInt8(i);
+        }
+        else {
+          this.parent[i + this.offset] = subject[i];
+        }
       }
     } else if (type == 'string') {
       // We are a string
@@ -5129,6 +5152,12 @@ Storage.prototype._createUser = function(cb) {
   var passwordKey = nodeCrypto.randomBytes(16)
   var ssc = nodeCrypto.randomBytes(16)
   this.key = nodeCrypto.randomBytes(16)
+
+  // crypto-browserify currently returns arrays.
+  if (!(passwordKey instanceof Buffer)) passwordKey = new Buffer(passwordKey)
+  if (!(ssc instanceof Buffer)) ssc = new Buffer(ssc)
+  if (!(this.key instanceof Buffer)) this.key = new Buffer(this.key)
+
   this.aes = new crypto.AES(this.key)
 
   var aes = new crypto.AES(passwordKey)
@@ -5181,7 +5210,7 @@ Storage.prototype.reload = function(cb, force) {
         var file = self.files[o.n]
         if (file) {
           file.timestamp = o.ts
-          file._setAttributes(o.at)
+          file._setAttributes(o.at, function() {})
           file.emit('update')
           self.emit('update', file)
         }
