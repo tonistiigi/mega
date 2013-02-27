@@ -434,3 +434,7 @@ b {
   width: 120px;
   text-align: center;
 }
+.download-list a {
+  padding-right: 10px;
+}
+

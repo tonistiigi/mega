@@ -8,6 +8,7 @@
     <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
     <script type="text/javascript" charset="utf-8" src="bundle.js"></script>
+    <script type="text/javascript" charset="utf-8" src="filesaver.js"></script>
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -40,6 +41,7 @@
           <div class="file_info" data-show="url_success">
             <div>Name: <b data-text="name"></b></div>
             <div>Size: <b data-text="size"></b>B</div>
+            <div><a href="javascript:void(0)" on-click="download">Download</a></div>
           </div>
         
           <hr>
@@ -63,6 +65,12 @@
             </div>
           </div>
           <div class="hint" data-show="storage_success">Rename, move, delete and add files in another window to see this list change in realtime.</div>
+
+          <hr>
+          
+          <h2>Download file</h2>
+          <div class="download-list" data-show="storage_success">
+          </div>
           
         </section>
         

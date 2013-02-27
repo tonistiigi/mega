@@ -16,6 +16,20 @@ function update(val) {
   }
 }
 
+function download(file) {
+  console.log('download', file.name)
+  file.download(function(err, buffer) {
+    if (err) {
+      return alert(err)
+    }
+    var ta = new Uint8Array(buffer.length)
+    for (var i = 0; i < buffer.length; i++) {
+      ta[i] = buffer.readUInt8(i)
+    }
+    saveAs(new Blob([ta], {}), file.name)
+  })
+}
+
 function login(email, password) {
   var opt = {}
   if (email) {
@@ -26,7 +40,7 @@ function login(email, password) {
     if (err) {
       return update({storage_error: err.message})
     }
-    update({storage_error: false, files: storage.mounts})
+    update({storage_error: false, mounts: storage.mounts, files: storage.files})
   })
   storage.on('update', function(f) {
     f.emit('change name', f.name)
@@ -83,7 +97,8 @@ data.on('change url', function(url) {
       update({
         url_error: false,
         name: file.name,
-        size: file.size
+        size: file.size,
+        file: file
       })
     })
   } catch (err) {
@@ -91,13 +106,28 @@ data.on('change url', function(url) {
   }
 })
 
-data.on('change files', function(files) {
+data.on('change mounts', function(files) {
   var tmpl = $('.file-list .item')[0]
   $('.file-list').empty()
   for (var i = 0; i < files.length; i++) {
     $('.file-list').append(renderFile(files[i], tmpl.cloneNode(true)))
   }
 })
+
+data.on('change files', function(files) {
+  var tmpl = $('<span><a href="javascript:void()" data-text="name"></a><span>')[0]
+  $('.download-list').empty()
+  for (var i in files) {
+    if (files[i].type != 0) continue;
+    var el = tmpl.cloneNode(true)
+    $('.download-list').append(el)
+    reactive(el, files[i])
+    $(el).on('click', function() {
+      download(this)
+    }.bind(files[i]))
+  }
+})
+
 
 data.on('change url_error', function(error) {
   update({url_success: !error})
@@ -114,6 +144,9 @@ $(function() {
     },
     login: function(e) {
       login($('#email').val(), $('#password').val())
+    },
+    download: function(e) {
+      download(data.file)
     },
     typeToString: typeToString,
     emptyIfUndefined: emptyIfUndefined
@@ -876,6 +909,8 @@ Buffer.prototype.readUInt8 = function(offset, noAssert) {
         'Trying to read beyond buffer length');
   }
 
+  if (offset >= buffer.length) return;
+
   return buffer.parent[buffer.offset + offset];
 };
 
@@ -894,12 +929,18 @@ function readUInt16(buffer, offset, isBigEndian, noAssert) {
         'Trying to read beyond buffer length');
   }
 
+  if (offset >= buffer.length) return 0
+
   if (isBigEndian) {
     val = buffer.parent[buffer.offset + offset] << 8;
-    val |= buffer.parent[buffer.offset + offset + 1];
+    if (offset + 1 < buffer.length) {
+      val |= buffer.parent[buffer.offset + offset + 1];
+    }
   } else {
     val = buffer.parent[buffer.offset + offset];
-    val |= buffer.parent[buffer.offset + offset + 1] << 8;
+    if (offset + 1 < buffer.length) {
+      val |= buffer.parent[buffer.offset + offset + 1] << 8;
+    }
   }
 
   return val;
@@ -927,15 +968,23 @@ function readUInt32(buffer, offset, isBigEndian, noAssert) {
         'Trying to read beyond buffer length');
   }
 
+  if (offset >= buffer.length) return 0
+
   if (isBigEndian) {
-    val = buffer.parent[buffer.offset + offset + 1] << 16;
-    val |= buffer.parent[buffer.offset + offset + 2] << 8;
-    val |= buffer.parent[buffer.offset + offset + 3];
+    if (offset + 1 < buffer.length)
+      val = buffer.parent[buffer.offset + offset + 1] << 16;
+    if (offset + 2 < buffer.length)
+      val |= buffer.parent[buffer.offset + offset + 2] << 8;
+    if (offset + 3 < buffer.length)
+      val |= buffer.parent[buffer.offset + offset + 3];
     val = val + (buffer.parent[buffer.offset + offset] << 24 >>> 0);
   } else {
+    if (offset + 2 < buffer.length)
     val = buffer.parent[buffer.offset + offset + 2] << 16;
+    if (offset + 1 < buffer.length)
     val |= buffer.parent[buffer.offset + offset + 1] << 8;
     val |= buffer.parent[buffer.offset + offset];
+    if (offset + 3 < buffer.length)
     val = val + (buffer.parent[buffer.offset + offset + 3] << 24 >>> 0);
   }
 
@@ -1007,6 +1056,8 @@ Buffer.prototype.readInt8 = function(offset, noAssert) {
     assert.ok(offset < buffer.length,
         'Trying to read beyond buffer length');
   }
+
+  if (offset >= buffer.length) return
 
   neg = buffer.parent[buffer.offset + offset] & 0x80;
   if (!neg) {
@@ -1158,7 +1209,9 @@ Buffer.prototype.writeUInt8 = function(value, offset, noAssert) {
     verifuint(value, 0xff);
   }
 
-  buffer.parent[buffer.offset + offset] = value;
+  if (offset < buffer.length) {
+    buffer.parent[buffer.offset + offset] = value;
+  }
 };
 
 function writeUInt16(buffer, value, offset, isBigEndian, noAssert) {
@@ -1178,13 +1231,12 @@ function writeUInt16(buffer, value, offset, isBigEndian, noAssert) {
     verifuint(value, 0xffff);
   }
 
-  if (isBigEndian) {
-    buffer.parent[buffer.offset + offset] = (value & 0xff00) >>> 8;
-    buffer.parent[buffer.offset + offset + 1] = value & 0x00ff;
-  } else {
-    buffer.parent[buffer.offset + offset + 1] = (value & 0xff00) >>> 8;
-    buffer.parent[buffer.offset + offset] = value & 0x00ff;
+  for (var i = 0; i < Math.min(buffer.length - offset, 2); i++) {
+    buffer.parent[buffer.offset + offset + i] =
+        (value & (0xff << (8 * (isBigEndian ? 1 - i : i)))) >>>
+            (isBigEndian ? 1 - i : i) * 8;
   }
+
 }
 
 Buffer.prototype.writeUInt16LE = function(value, offset, noAssert) {
@@ -1212,16 +1264,9 @@ function writeUInt32(buffer, value, offset, isBigEndian, noAssert) {
     verifuint(value, 0xffffffff);
   }
 
-  if (isBigEndian) {
-    buffer.parent[buffer.offset + offset] = (value >>> 24) & 0xff;
-    buffer.parent[buffer.offset + offset + 1] = (value >>> 16) & 0xff;
-    buffer.parent[buffer.offset + offset + 2] = (value >>> 8) & 0xff;
-    buffer.parent[buffer.offset + offset + 3] = value & 0xff;
-  } else {
-    buffer.parent[buffer.offset + offset + 3] = (value >>> 24) & 0xff;
-    buffer.parent[buffer.offset + offset + 2] = (value >>> 16) & 0xff;
-    buffer.parent[buffer.offset + offset + 1] = (value >>> 8) & 0xff;
-    buffer.parent[buffer.offset + offset] = value & 0xff;
+  for (var i = 0; i < Math.min(buffer.length - offset, 4); i++) {
+    buffer.parent[buffer.offset + offset + i] =
+        (value >>> (isBigEndian ? 3 - i : i) * 8) & 0xff;
   }
 }
 
@@ -5922,7 +5967,7 @@ API.gateway = 'https://g.api.mega.co.nz/'
 // Client-server request
 API.prototype.request = function(json, cb, retryno) {
   var self = this
-  var qs = {id: this.counterId++}
+  var qs = {id: (this.counterId++).toString()}
   if (this.sid) {
     qs.sid = this.sid
   }
@@ -7087,7 +7132,7 @@ http.request = function (params, cb) {
     if (!params) params = {};
     if (!params.host) params.host = window.location.host.split(':')[0];
     if (!params.port) params.port = window.location.port;
-
+    
     var req = new Request(new xhrHttp, params);
     if (cb) req.on('response', cb);
     return req;
@@ -7142,12 +7187,15 @@ var xhrHttp = (function () {
 },{"events":12,"./lib/request":42}],42:[function(require,module,exports){var Stream = require('stream');
 var Response = require('./response');
 var concatStream = require('concat-stream')
+var Buffer = require('buffer')
 
 var Request = module.exports = function (xhr, params) {
     var self = this;
     self.writable = true;
     self.xhr = xhr;
     self.body = concatStream()
+
+    self.xhr.responseType = 'arraybuffer'
 
     var uri = params.host + ':' + params.port + (params.path || '/');
 
@@ -7170,6 +7218,11 @@ var Request = module.exports = function (xhr, params) {
             }
             else xhr.setRequestHeader(key, value)
         }
+    }
+
+    if (params.auth) {
+        //basic auth
+        this.setHeader('Authorization', 'Basic ' + new Buffer(params.auth).toString('base64'));
     }
 
     var res = new Response;
@@ -7262,7 +7315,8 @@ var indexOf = function (xs, x) {
     return -1;
 };
 
-},{"stream":22,"./response":43,"concat-stream":44}],43:[function(require,module,exports){var Stream = require('stream');
+},{"stream":22,"./response":43,"concat-stream":44,"buffer":2}],43:[function(require,module,exports){var Stream = require('stream');
+var Buffer = require('buffer').Buffer;
 
 var Response = module.exports = function (res) {
     this.offset = 0;
@@ -7282,13 +7336,13 @@ function parseHeaders (res) {
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         if (line === '') continue;
-        
+
         var m = line.match(/^([^:]+):\s*(.*)/);
         if (m) {
             var key = m[1].toLowerCase(), value = m[2];
-            
+
             if (headers[key] !== undefined) {
-            
+
                 if (isArray(headers[key])) {
                     headers[key].push(value);
                 }
@@ -7309,7 +7363,7 @@ function parseHeaders (res) {
 
 Response.prototype.getResponse = function (xhr) {
     var respType = String(xhr.responseType).toLowerCase();
-    if (respType === 'blob') return xhr.responseBlob;
+    if (respType === 'blob') return xhr.responseBlob || xhr.response;
     if (respType === 'arraybuffer') return xhr.response;
     return xhr.responseText;
 }
@@ -7327,7 +7381,7 @@ Response.prototype.handle = function (res) {
         catch (err) {
             capable.status2 = false;
         }
-        
+
         if (capable.status2) {
             this.emit('ready');
         }
@@ -7341,7 +7395,7 @@ Response.prototype.handle = function (res) {
             }
         }
         catch (err) {}
-        
+
         try {
             this._emitData(res);
         }
@@ -7355,20 +7409,24 @@ Response.prototype.handle = function (res) {
             this.emit('ready');
         }
         this._emitData(res);
-        
+
         if (res.error) {
             this.emit('error', this.getResponse(res));
         }
         else this.emit('end');
-        
+
         this.emit('close');
     }
 };
 
+Response.prototype.setEncoding = function(enc) {
+  console.log('try encoding', enc)
+}
+
 Response.prototype._emitData = function (res) {
     var respBody = this.getResponse(res);
     if (respBody.toString().match(/ArrayBuffer/)) {
-        this.emit('data', new Uint8Array(respBody, this.offset));
+        this.emit('data', new Buffer(new Uint8Array(respBody, this.offset)));
         this.offset = respBody.byteLength;
         return;
     }
@@ -7382,7 +7440,7 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{"stream":22}],44:[function(require,module,exports){var stream = require('stream')
+},{"stream":22,"buffer":2}],44:[function(require,module,exports){var stream = require('stream')
 var util = require('util')
 
 function ConcatStream(cb) {
@@ -8325,7 +8383,7 @@ var request = require('request')
 var crypto = require('./crypto')
 var API = require('./api').API
 var mega = require('./mega')
-
+var util = require('./util')
 var api = new API(false)
 
 exports.File = File
@@ -8429,6 +8487,7 @@ File.prototype.download = function(cb) {
     if (err) return stream.emit('error', err)
 
     var r = request(response.g)
+
     r.pipe(stream)
     var i = 0
     r.on('data', function(d) {
@@ -8469,7 +8528,7 @@ File.prototype.link = function(noKey, cb) {
   })
 }
 })(require("__browserify_process"))
-},{"events":12,"util":11,"request":30,"./crypto":16,"./api":29,"./mega":3,"__browserify_process":7}],4:[function(require,module,exports){
+},{"events":12,"util":11,"request":30,"./crypto":16,"./api":29,"./mega":3,"./util":17,"__browserify_process":7}],4:[function(require,module,exports){
 /**
  * Module dependencies.
  */

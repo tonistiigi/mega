@@ -16,6 +16,20 @@ function update(val) {
   }
 }
 
+function download(file) {
+  console.log('download', file.name)
+  file.download(function(err, buffer) {
+    if (err) {
+      return alert(err)
+    }
+    var ta = new Uint8Array(buffer.length)
+    for (var i = 0; i < buffer.length; i++) {
+      ta[i] = buffer.readUInt8(i)
+    }
+    saveAs(new Blob([ta], {}), file.name)
+  })
+}
+
 function login(email, password) {
   var opt = {}
   if (email) {
@@ -26,7 +40,7 @@ function login(email, password) {
     if (err) {
       return update({storage_error: err.message})
     }
-    update({storage_error: false, files: storage.mounts})
+    update({storage_error: false, mounts: storage.mounts, files: storage.files})
   })
   storage.on('update', function(f) {
     f.emit('change name', f.name)
@@ -83,7 +97,8 @@ data.on('change url', function(url) {
       update({
         url_error: false,
         name: file.name,
-        size: file.size
+        size: file.size,
+        file: file
       })
     })
   } catch (err) {
@@ -91,13 +106,28 @@ data.on('change url', function(url) {
   }
 })
 
-data.on('change files', function(files) {
+data.on('change mounts', function(files) {
   var tmpl = $('.file-list .item')[0]
   $('.file-list').empty()
   for (var i = 0; i < files.length; i++) {
     $('.file-list').append(renderFile(files[i], tmpl.cloneNode(true)))
   }
 })
+
+data.on('change files', function(files) {
+  var tmpl = $('<span><a href="javascript:void()" data-text="name"></a><span>')[0]
+  $('.download-list').empty()
+  for (var i in files) {
+    if (files[i].type != 0) continue;
+    var el = tmpl.cloneNode(true)
+    $('.download-list').append(el)
+    reactive(el, files[i])
+    $(el).on('click', function() {
+      download(this)
+    }.bind(files[i]))
+  }
+})
+
 
 data.on('change url_error', function(error) {
   update({url_success: !error})
@@ -114,6 +144,9 @@ $(function() {
     },
     login: function(e) {
       login($('#email').val(), $('#password').val())
+    },
+    download: function(e) {
+      download(data.file)
     },
     typeToString: typeToString,
     emptyIfUndefined: emptyIfUndefined
