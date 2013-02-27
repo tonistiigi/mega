@@ -63,9 +63,11 @@ function login(email, password) {
   })
   storage.on('add', function(f) {
     f.parent.emit('change children', f.parent.children)
+    update({files: storage.files})
   })
   storage.on('delete', function(f) {
     f.parent.emit('change children', f.parent.children)
+    update({files: storage.files})
   })
   storage.on('move', function(f, from) {
     from.emit('change children', from.children)

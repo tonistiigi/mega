@@ -29,6 +29,11 @@
           <a href="https://npmjs.org/package/mega" id="view-on-npm" class="button"><span>View on NPM</span></a>
         </section>
 
+        
+        <div class="hint">
+          This page is only for testing purposes and you should only use test files.
+        </div>
+
         <hr>
 
         <section id="main_content">
@@ -43,6 +48,13 @@
             <div>Size: <b data-text="size"></b>B</div>
             <div><a href="javascript:void(0)" on-click="download">Download</a></div>
           </div>
+          
+          <br><br>
+          <pre><code>mega.file(url).loadAttributes(function(err, file) {
+  // file.name
+  // file.size
+  // file.attributes
+})</code></pre>
         
           <hr>
           
@@ -65,6 +77,12 @@
             </div>
           </div>
           <div class="hint" data-show="storage_success">Rename, move, delete and add files in another window to see this list change in realtime.</div>
+          
+          <br>
+          <pre><code>var storage = mega.storage({email: '', password: ''}, function(err) {
+  // storage.files
+  // storage.mounts
+})</code></pre>
 
           <hr>
           
@@ -72,13 +90,21 @@
           <div class="link" data-show="link">Download from <b data-text="link"></b></div>
           <div class="link-list" data-show="storage_success">
           </div>
-          
+          <br>
+          <pre><code>file.link(function(err, url) {
+  // url: https://mega.co.nz/#!downloadId!key
+})</code></pre>
           <hr>
           
           <h2>Download file</h2>
           <div class="download-list" data-show="storage_success">
           </div>
-          
+          <br>
+          <pre><code>file.download().pipe(fs.createWriteStream('myfile.txt'))
+
+file.download(function(err, data) {
+  // data is buffer
+})</code></pre>
           <hr>
           
           <h2> Upload file</h2>
@@ -86,7 +112,12 @@
             <input type="file" id="upload">
             <a href="javascript:void(0)" class="button button-small" on-click="upload">Upload</a>
           </div>
-          
+          <br>
+          <pre><code>fs.createReadStream('myfile.txt').pipe(storage.upload('myfile.txt'))
+
+storage.upload({name: 'myfile.txt'}, buffer, function(err, file) {
+
+})</code></pre>
           
         </section>
         
