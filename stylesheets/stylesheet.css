@@ -438,6 +438,7 @@ b {
   width: 120px;
   text-align: center;
 }
+.link-list a,
 .download-list a {
   padding-right: 20px;
   white-space: nowrap;

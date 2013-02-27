@@ -133,6 +133,7 @@ data.on('change mounts', function(files) {
 data.on('change files', function(files) {
   var tmpl = $('<span><a href="javascript:void()" data-text="name"></a><span>')[0]
   $('.download-list').empty()
+  $('.link-list').empty()
   for (var i in files) {
     if (files[i].type != 0) continue;
     var el = tmpl.cloneNode(true)
@@ -140,6 +141,16 @@ data.on('change files', function(files) {
     reactive(el, files[i])
     $(el).on('click', function() {
       download(this)
+    }.bind(files[i]))
+
+    el = tmpl.cloneNode(true)
+    $('.link-list').append(el)
+    reactive(el, files[i])
+    $(el).on('click', function() {
+      this.link(function(err, link) {
+        if (err) return alert(err)
+        update({link: link})
+      })
     }.bind(files[i]))
   }
 })
