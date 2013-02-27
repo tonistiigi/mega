@@ -30,6 +30,22 @@ function download(file) {
   })
 }
 
+function upload() {
+  var input = $('#upload')[0]
+  if (!input.files.length) return alert('No file selected.')
+  if (!storage) return alert('Login first.')
+
+  var file = input.files[0]
+  var reader = new FileReader()
+  reader.onloadend = function() {
+    var buf = new Buffer(new Uint8Array(reader.result))
+    storage.upload(file.name, buf, function(err, file) {
+      if (err) return alert(err)
+    })
+  }
+  reader.readAsArrayBuffer(file)
+}
+
 function login(email, password) {
   var opt = {}
   if (email) {
@@ -148,6 +164,7 @@ $(function() {
     download: function(e) {
       download(data.file)
     },
+    upload: upload,
     typeToString: typeToString,
     emptyIfUndefined: emptyIfUndefined
   })

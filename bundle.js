@@ -30,6 +30,23 @@ function download(file) {
   })
 }
 
+function upload() {
+  var input = $('#upload')[0]
+  if (!input.files.length) return alert('No file selected.')
+  if (!storage) return alert('Login first.')
+
+  var file = input.files[0]
+  var reader = new FileReader()
+  reader.onloadend = function() {
+    var buf = new Buffer(new Uint8Array(reader.result))
+    storage.upload(file.name, buf, function(err, file) {
+      if (err) return alert(err)
+    })
+  }
+  reader.readAsArrayBuffer(file)
+
+}
+
 function login(email, password) {
   var opt = {}
   if (email) {
@@ -148,6 +165,7 @@ $(function() {
     download: function(e) {
       download(data.file)
     },
+    upload: upload,
     typeToString: typeToString,
     emptyIfUndefined: emptyIfUndefined
   })
@@ -514,6 +532,19 @@ SlowBuffer.prototype.copy = function(target, targetstart, sourcestart, sourceend
     target[i] = temp[i-targetstart];
   }
 };
+
+SlowBuffer.prototype.fill = function(value, start, end) {
+  if (end > this.length) {
+    throw new Error('oob');
+  }
+  if (start > end) {
+    throw new Error('oob');
+  }
+
+  for (var i = start; i < end; i++) {
+    this[i] = value;
+  }
+}
 
 function coerce(length) {
   // Coerce length to a number (possibly NaN), round up
@@ -2568,6 +2599,9 @@ mega.encrypt = function(key) {
   if (!key) {
     key = require('crypto').randomBytes(24)
   }
+  if (!(key instanceof Buffer)) {
+    key = new Buffer(key)
+  }
 
   var stream = through(write, end)
 
@@ -2592,7 +2626,7 @@ mega.encrypt = function(key) {
     newkey.writeInt32BE(mac[0]^mac[1], 24)
     newkey.writeInt32BE(mac[2]^mac[3], 28)
     for (var i = 0; i < 16; i++) {
-      newkey[i] = newkey[i] ^ newkey[16 + i]
+      newkey.writeUInt8(newkey.readUInt8(i) ^ newkey.readUInt8(16 + i), i)
     }
     stream.key = newkey
     this.emit('end')
@@ -5405,6 +5439,8 @@ Storage.prototype.upload = function(opt, buffer, cb) {
             }]}, function(err, response) {
               if (err) return returnError(err)
               var file = self._importFile(response.f[0])
+              self.emit('add', file)
+
               stream.emit('complete', file)
 
               if (cb) {
@@ -7187,13 +7223,14 @@ var xhrHttp = (function () {
 },{"events":12,"./lib/request":42}],42:[function(require,module,exports){var Stream = require('stream');
 var Response = require('./response');
 var concatStream = require('concat-stream')
-var Buffer = require('buffer')
+var Buffer = require('buffer').Buffer
 
 var Request = module.exports = function (xhr, params) {
     var self = this;
     self.writable = true;
     self.xhr = xhr;
     self.body = concatStream()
+    console.log('new request')
 
     self.xhr.responseType = 'arraybuffer'
 
@@ -7204,6 +7241,10 @@ var Request = module.exports = function (xhr, params) {
         (params.scheme || 'http') + '://' + uri,
         true
     );
+
+    console.log('open',params.method || 'GET',
+        (params.scheme || 'http') + '://' + uri,
+        true )
 
     if (params.headers) {
         var keys = objectKeys(params.headers);
@@ -7216,7 +7257,9 @@ var Request = module.exports = function (xhr, params) {
                     xhr.setRequestHeader(key, value[j]);
                 }
             }
-            else xhr.setRequestHeader(key, value)
+            else {
+              xhr.setRequestHeader(key, value)
+            }
         }
     }
 
@@ -7264,7 +7307,15 @@ Request.prototype.destroy = function (s) {
 Request.prototype.end = function (s) {
     if (s !== undefined) this.body.write(s);
     this.body.end()
-    this.xhr.send(this.body.getBody());
+    var body = this.body.getBody()
+    if (body instanceof Buffer) {
+      var ta = new Uint8Array(body.length)
+      for (var i = 0; i < ta.length; i++) {
+        ta[i] = body.readUInt8(i)
+      }
+      body = ta
+    }
+    this.xhr.send(body);
 };
 
 // Taken from http://dxr.mozilla.org/mozilla/mozilla-central/content/base/src/nsXMLHttpRequest.cpp.html
@@ -7425,6 +7476,7 @@ Response.prototype.setEncoding = function(enc) {
 
 Response.prototype._emitData = function (res) {
     var respBody = this.getResponse(res);
+    if (!respBody) return;
     if (respBody.toString().match(/ArrayBuffer/)) {
         this.emit('data', new Buffer(new Uint8Array(respBody, this.offset)));
         this.offset = respBody.byteLength;
@@ -8487,7 +8539,6 @@ File.prototype.download = function(cb) {
     if (err) return stream.emit('error', err)
 
     var r = request(response.g)
-
     r.pipe(stream)
     var i = 0
     r.on('data', function(d) {

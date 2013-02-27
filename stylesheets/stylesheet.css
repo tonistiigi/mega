@@ -383,6 +383,10 @@ input {
 input#url {
   width: 500px;
 }
+input[type="file"] {
+  border: none;
+  padding: 0;
+}
 label {
   padding: 3px;
 }
@@ -435,6 +439,7 @@ b {
   text-align: center;
 }
 .download-list a {
-  padding-right: 10px;
+  padding-right: 20px;
+  white-space: nowrap;
 }
 
