@@ -5,7 +5,7 @@ var mega = require('mega')
 var reactive = require('reactive')
 var Emitter = require('emitter')
 var $ = require('jquery-browserify')
-
+var storage
 var data = {}
 Emitter(data)
 
@@ -16,11 +16,51 @@ function update(val) {
   }
 }
 
+function login(email, password) {
+  var opt = {}
+  if (email) {
+    opt.email = email
+    opt.password = password
+  }
+  storage = mega(opt, function(err) {
+    if (err) {
+      return update({storage_error: err.message})
+    }
+    update({storage_error: false, files: storage.mounts})
+  })
+}
+
+function typeToString(type) {
+  return ({
+    0: 'File',
+    1: 'Dir',
+    2: 'Root',
+    3: 'Inbox',
+    4: 'Trash'
+  })[type]
+}
+
+function emptyIfUndefined(val) {
+  return val ? val : ''
+}
+
+function renderFile(file, el) {
+  var tmpl = el.cloneNode(true)
+  reactive(el, file, {typeToString: typeToString, emptyIfUndefined: emptyIfUndefined})
+  if (file.children) {
+    var c = $(el).find('.children')
+    for (var i = 0; i < file.children.length; i++) {
+      c.append(renderFile(file.children[i], tmpl.cloneNode(true)))
+    }
+  }
+  return el
+}
+
 data.on('change url', function(url) {
   try {
     mega.file(url).loadAttributes(function(err, file) {
       if (err) {
-        return update({url_error: err.message, url_success: false})
+        return update({url_error: err.message})
       }
       update({
         url_error: false,
@@ -33,8 +73,19 @@ data.on('change url', function(url) {
   }
 })
 
+data.on('change files', function(files) {
+  var tmpl = $('.file-list .item')[0]
+  $('.file-list').empty()
+  for (var i = 0; i < files.length; i++) {
+    $('.file-list').append(renderFile(files[i], tmpl.cloneNode(true)))
+  }
+})
+
 data.on('change url_error', function(error) {
   update({url_success: !error})
+})
+data.on('change storage_error', function(error) {
+  update({storage_success: !error})
 })
 
 
@@ -42,7 +93,12 @@ $(function() {
   reactive(document.body, data, {
     urlchange: function(e) {
       update({url: e.target.value})
-    }
+    },
+    login: function(e) {
+      login($('#email').val(), $('#password').val())
+    },
+    typeToString: typeToString,
+    emptyIfUndefined: emptyIfUndefined
   })
 
 })
@@ -152,6 +208,7 @@ SlowBuffer.byteLength = function (str, encoding) {
       return utf8ToBytes(str).length;
 
     case 'ascii':
+    case 'binary':
       return str.length;
 
     case 'base64':
@@ -183,6 +240,8 @@ SlowBuffer.prototype.asciiWrite = function (string, offset, length) {
   var bytes, pos;
   return SlowBuffer._charsWritten =  blitBuffer(asciiToBytes(string), this, offset, length);
 };
+
+SlowBuffer.prototype.binaryWrite = SlowBuffer.prototype.asciiWrite;
 
 SlowBuffer.prototype.base64Write = function (string, offset, length) {
   var bytes, pos;
@@ -227,6 +286,8 @@ SlowBuffer.prototype.asciiSlice = function () {
     ret += String.fromCharCode(bytes[i]);
   return ret;
 }
+
+SlowBuffer.prototype.binarySlice = SlowBuffer.prototype.asciiSlice;
 
 SlowBuffer.prototype.inspect = function() {
   var out = [],
@@ -2066,7 +2127,7 @@ function indexOf (xs, x) {
         if (x === xs[i]) return i;
     }
     return -1;
-}
+} 
 
 // By default EventEmitters will print a warning if more than
 // 10 listeners are added to it. This is a useful default which
@@ -5023,7 +5084,7 @@ function Storage(options, cb) {
     this.api.request({a: 'us', user: options.email, uh: uh}, function(err, response) {
       if (err) return cb(err)
       //console.log('resp', response)
-      self.key = new Buffer(crypto.formatKey(response.k))
+      self.key = crypto.formatKey(response.k)
       aes.decryptKey(self.key)
       self.aes = new crypto.AES(self.key)
 
@@ -7660,7 +7721,7 @@ function createConnectionSSL (port, host, options) {
 var https = module.exports;
 
 for (var key in http) {
-  if (http.hasOwnProperty(key)) https[key] = http[key];
+    if (http.hasOwnProperty(key)) https[key] = http[key];
 };
 
 https.request = function (params, cb) {
@@ -8255,7 +8316,7 @@ function File(opt, storage) {
       this.key = crypto.formatKey(parts[parts.length-1])
       storage.aes.decryptKey(this.key)
       this.size = opt.s || 0
-      if (opt.a) this._setAttributes(opt.a)
+      if (opt.a) this._setAttributes(opt.a, function() {})
       else this.name = ''
     }
   }

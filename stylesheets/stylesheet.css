@@ -130,6 +130,10 @@ a.button {
   -moz-box-shadow: 10px 10px 5px #888;
   box-shadow: 0px 1px 5px #e8e8e8;
 }
+a.button.button-small {
+  padding: 1px 7px;
+  border-radius: 7px;
+}
 a.button:hover {
   border-top: solid 1px #b7b7b7;
   border-left: solid 1px #b3b3b3;
@@ -374,8 +378,10 @@ footer a:hover {
 input {
   padding: 5px;
   border: 1px solid #ccc;
-  width: 500px;
   font-size: .8em;
+}
+input#url {
+  width: 500px;
 }
 label {
   padding: 3px;
@@ -399,4 +405,32 @@ label {
 }
 b {
   font-weight: bold;
+}
+.fm-form > * {
+  float: left;
+  margin: 1px 0 1px 5px;
+}
+.hint {
+  float: none;
+  clear: left;
+  font-style: italic;
+  color: #999;
+  font-size: .8em;
+}
+.file-list {
+  padding: 3px;
+}
+.file-list .item .children {
+  padding-left: 30px;
+}
+.file-list .item .size {
+  float: right;
+  width: 120px;
+  text-align: right;
+  height: 20px;
+}
+.file-list .item .type {
+  float: right;
+  width: 120px;
+  text-align: center;
 }

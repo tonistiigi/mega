@@ -35,11 +35,32 @@
           <h2>Access file by URL:</h2>
           
           <label>File URL:</label>
-          <input type="text" placeholder="https://mega.co.nz/#!linkid!key" on-change="urlchange">
+          <input type="text" id="url" placeholder="https://mega.co.nz/#!linkid!key" on-change="urlchange">
           <div class="error" data-show="url_error" data-text="url_error"></div>
           <div class="file_info" data-show="url_success">
             <div>Name: <b data-text="name"></b></div>
             <div>Size: <b data-text="size"></b>B</div>
+          </div>
+        
+          <hr>
+          
+          <h2>Access file manager</h2>
+          <div class="fm-form">
+            <label>E-mail:</label>
+            <input type="text" id="email">
+            <label>Password:</label>
+            <input type="password" id="password">
+            <a href="javascript:void(0)" class="button button-small" on-click="login">Login</a>
+            <div class="hint">Providing e-mail and password is optional.</div>
+          </div>
+          <div class="error" data-show="storage_error" data-text="storage_error"></div>
+          <div class="file-list" data-show="storage_success">
+            <div class="item">
+              <div class="size" data-text="size | emptyIfUndefined"></div>
+              <div class="type" data-text="type | typeToString"></div>
+              <div data-text="name"></div>
+              <div class='children'></div>
+            </div>
           </div>
           
         </section>
