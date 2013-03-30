@@ -972,7 +972,7 @@ function readUInt16(buffer, offset, isBigEndian, noAssert) {
         'Trying to read beyond buffer length');
   }
 
-  if (offset >= buffer.length) return 0
+  if (offset >= buffer.length) return 0;
 
   if (isBigEndian) {
     val = buffer.parent[buffer.offset + offset] << 8;
@@ -1011,7 +1011,7 @@ function readUInt32(buffer, offset, isBigEndian, noAssert) {
         'Trying to read beyond buffer length');
   }
 
-  if (offset >= buffer.length) return 0
+  if (offset >= buffer.length) return 0;
 
   if (isBigEndian) {
     if (offset + 1 < buffer.length)
@@ -1023,12 +1023,12 @@ function readUInt32(buffer, offset, isBigEndian, noAssert) {
     val = val + (buffer.parent[buffer.offset + offset] << 24 >>> 0);
   } else {
     if (offset + 2 < buffer.length)
-    val = buffer.parent[buffer.offset + offset + 2] << 16;
+      val = buffer.parent[buffer.offset + offset + 2] << 16;
     if (offset + 1 < buffer.length)
-    val |= buffer.parent[buffer.offset + offset + 1] << 8;
+      val |= buffer.parent[buffer.offset + offset + 1] << 8;
     val |= buffer.parent[buffer.offset + offset];
     if (offset + 3 < buffer.length)
-    val = val + (buffer.parent[buffer.offset + offset + 3] << 24 >>> 0);
+      val = val + (buffer.parent[buffer.offset + offset + 3] << 24 >>> 0);
   }
 
   return val;
@@ -1100,7 +1100,7 @@ Buffer.prototype.readInt8 = function(offset, noAssert) {
         'Trying to read beyond buffer length');
   }
 
-  if (offset >= buffer.length) return
+  if (offset >= buffer.length) return;
 
   neg = buffer.parent[buffer.offset + offset] & 0x80;
   if (!neg) {
@@ -2238,7 +2238,7 @@ function indexOf (xs, x) {
         if (x === xs[i]) return i;
     }
     return -1;
-} 
+}
 
 // By default EventEmitters will print a warning if more than
 // 10 listeners are added to it. This is a useful default which
@@ -2596,7 +2596,7 @@ mega.file = function(opt) {
     var url = parse(opt)
 
     var split
-    if (url.host !== 'mega.co.nz' || !url.hash
+    if (url.hostname !== 'mega.co.nz' || !url.hash
       || (split = url.hash.split('!')).length != 3) {
         throw('Wrong URL supplied.')
     }
@@ -4384,7 +4384,7 @@ exports.chunkSizeSafe = function(size) {
       last = last ? Buffer.concat([last, d]) : d
     }
     else if (d.length > end) {
-      last = last ? Buffer.concat([last, d.slice(end)]) : d.slice(end)
+      last = d.slice(end)
       this.emit('data', d.slice(0, end))
     }
     else {
@@ -7242,7 +7242,6 @@ var Request = module.exports = function (xhr, params) {
     self.writable = true;
     self.xhr = xhr;
     self.body = concatStream()
-    console.log('new request')
 
     self.xhr.responseType = 'arraybuffer'
 
@@ -7253,10 +7252,6 @@ var Request = module.exports = function (xhr, params) {
         (params.scheme || 'http') + '://' + uri,
         true
     );
-
-    console.log('open',params.method || 'GET',
-        (params.scheme || 'http') + '://' + uri,
-        true )
 
     if (params.headers) {
         var keys = objectKeys(params.headers);
@@ -7269,9 +7264,7 @@ var Request = module.exports = function (xhr, params) {
                     xhr.setRequestHeader(key, value[j]);
                 }
             }
-            else {
-              xhr.setRequestHeader(key, value)
-            }
+            else xhr.setRequestHeader(key, value)
         }
     }
 
@@ -7483,7 +7476,7 @@ Response.prototype.handle = function (res) {
 };
 
 Response.prototype.setEncoding = function(enc) {
-  console.log('try encoding', enc)
+    // todo:
 }
 
 Response.prototype._emitData = function (res) {
