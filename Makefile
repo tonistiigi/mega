@@ -1,3 +1,3 @@
 bundle.js: index.js node_modules/*
 	@echo "Building $@ `date`"
-	browserify index.js -o $@
+	./node_modules/.bin/browserify index.js -o $@

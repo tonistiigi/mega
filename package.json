@@ -4,8 +4,11 @@
   "private": true,
   "dependencies": {
     "mega": "*",
-    "reactive-component": "*",
-    "jquery-browserify": "*",
-    "emitter": "*"
+    "reactive-component": "~0.11.0",
+    "jquery-browserify": "~1.8.1",
+    "emitter": "0.0.1"
+  },
+  "devDependencies": {
+    "browserify": "git://github.com/tonistiigi/node-browserify.git#master"
   }
 }
