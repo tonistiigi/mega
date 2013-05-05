@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "mega": "*",
+    "uint8": "*",
     "reactive-component": "~0.11.0",
     "jquery-browserify": "~1.8.1",
     "emitter": "0.0.1"

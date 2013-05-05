@@ -2,6 +2,7 @@ if (process.browser) {
   global.Buffer = require('buffer').Buffer
 }
 var mega = require('mega')
+var uint8 = require('uint8')
 var reactive = require('reactive')
 var Emitter = require('emitter')
 var $ = require('jquery-browserify')
@@ -22,10 +23,7 @@ function download(file) {
     if (err) {
       return alert(err)
     }
-    var ta = new Uint8Array(buffer.length)
-    for (var i = 0; i < buffer.length; i++) {
-      ta[i] = buffer.readUInt8(i)
-    }
+    var ta = uint8.bufferToUint8(buffer)
     saveAs(new Blob([ta], {}), file.name)
   })
 }
@@ -38,7 +36,7 @@ function upload() {
   var file = input.files[0]
   var reader = new FileReader()
   reader.onloadend = function() {
-    var buf = new Buffer(new Uint8Array(reader.result))
+    var buf = uint8.uint8ToBuffer(new Uint8Array(reader.result))
     storage.upload(file.name, buf, function(err, file) {
       if (err) return alert(err)
     })
