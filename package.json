@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "mega": "*",
-    "uint8": "*",
+    "mega": "0.1.0",
+    "uint8": "1.0.0",
     "reactive-component": "~0.11.0",
     "jquery-browserify": "~1.8.1",
     "emitter": "0.0.1"
