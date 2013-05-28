@@ -907,7 +907,7 @@ $(function() {
 })
 
 })(require("__browserify_process"),window)
-},{"buffer":3,"uint8":7,"reactive":8,"mega":9,"emitter":10,"jquery-browserify":11,"__browserify_process":5}],12:[function(require,module,exports){
+},{"buffer":3,"mega":7,"uint8":8,"reactive":9,"emitter":10,"jquery-browserify":11,"__browserify_process":5}],12:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -993,193 +993,7 @@ exports.writeIEEE754 = function(buffer, value, offset, isBE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-},{}],4:[function(require,module,exports){
-(function(process){if (!process.EventEmitter) process.EventEmitter = function () {};
-
-var EventEmitter = exports.EventEmitter = process.EventEmitter;
-var isArray = typeof Array.isArray === 'function'
-    ? Array.isArray
-    : function (xs) {
-        return Object.prototype.toString.call(xs) === '[object Array]'
-    }
-;
-function indexOf (xs, x) {
-    if (xs.indexOf) return xs.indexOf(x);
-    for (var i = 0; i < xs.length; i++) {
-        if (x === xs[i]) return i;
-    }
-    return -1;
-}
-
-// By default EventEmitters will print a warning if more than
-// 10 listeners are added to it. This is a useful default which
-// helps finding memory leaks.
-//
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-var defaultMaxListeners = 10;
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!this._events) this._events = {};
-  this._events.maxListeners = n;
-};
-
-
-EventEmitter.prototype.emit = function(type) {
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events || !this._events.error ||
-        (isArray(this._events.error) && !this._events.error.length))
-    {
-      if (arguments[1] instanceof Error) {
-        throw arguments[1]; // Unhandled 'error' event
-      } else {
-        throw new Error("Uncaught, unspecified 'error' event.");
-      }
-      return false;
-    }
-  }
-
-  if (!this._events) return false;
-  var handler = this._events[type];
-  if (!handler) return false;
-
-  if (typeof handler == 'function') {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        var args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-    return true;
-
-  } else if (isArray(handler)) {
-    var args = Array.prototype.slice.call(arguments, 1);
-
-    var listeners = handler.slice();
-    for (var i = 0, l = listeners.length; i < l; i++) {
-      listeners[i].apply(this, args);
-    }
-    return true;
-
-  } else {
-    return false;
-  }
-};
-
-// EventEmitter is defined in src/node_events.cc
-// EventEmitter.prototype.emit() is also defined there.
-EventEmitter.prototype.addListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('addListener only takes instances of Function');
-  }
-
-  if (!this._events) this._events = {};
-
-  // To avoid recursion in the case that type == "newListeners"! Before
-  // adding it to the listeners, first emit "newListeners".
-  this.emit('newListener', type, listener);
-
-  if (!this._events[type]) {
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  } else if (isArray(this._events[type])) {
-
-    // Check for listener leak
-    if (!this._events[type].warned) {
-      var m;
-      if (this._events.maxListeners !== undefined) {
-        m = this._events.maxListeners;
-      } else {
-        m = defaultMaxListeners;
-      }
-
-      if (m && m > 0 && this._events[type].length > m) {
-        this._events[type].warned = true;
-        console.error('(node) warning: possible EventEmitter memory ' +
-                      'leak detected. %d listeners added. ' +
-                      'Use emitter.setMaxListeners() to increase limit.',
-                      this._events[type].length);
-        console.trace();
-      }
-    }
-
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  } else {
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  var self = this;
-  self.on(type, function g() {
-    self.removeListener(type, g);
-    listener.apply(this, arguments);
-  });
-
-  return this;
-};
-
-EventEmitter.prototype.removeListener = function(type, listener) {
-  if ('function' !== typeof listener) {
-    throw new Error('removeListener only takes instances of Function');
-  }
-
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (!this._events || !this._events[type]) return this;
-
-  var list = this._events[type];
-
-  if (isArray(list)) {
-    var i = indexOf(list, listener);
-    if (i < 0) return this;
-    list.splice(i, 1);
-    if (list.length == 0)
-      delete this._events[type];
-  } else if (this._events[type] === listener) {
-    delete this._events[type];
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  if (arguments.length === 0) {
-    this._events = {};
-    return this;
-  }
-
-  // does not use listeners(), so no side effect of creating _events[type]
-  if (type && this._events && this._events[type]) this._events[type] = null;
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  if (!this._events) this._events = {};
-  if (!this._events[type]) this._events[type] = [];
-  if (!isArray(this._events[type])) {
-    this._events[type] = [this._events[type]];
-  }
-  return this._events[type];
-};
-
-})(require("__browserify_process"))
-},{"__browserify_process":5}],3:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 function SlowBuffer (size) {
     this.length = size;
 };
@@ -2498,7 +2312,193 @@ SlowBuffer.prototype.writeFloatBE = Buffer.prototype.writeFloatBE;
 SlowBuffer.prototype.writeDoubleLE = Buffer.prototype.writeDoubleLE;
 SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
-},{"assert":1,"./buffer_ieee754":12,"base64-js":13}],11:[function(require,module,exports){
+},{"assert":1,"./buffer_ieee754":12,"base64-js":13}],4:[function(require,module,exports){
+(function(process){if (!process.EventEmitter) process.EventEmitter = function () {};
+
+var EventEmitter = exports.EventEmitter = process.EventEmitter;
+var isArray = typeof Array.isArray === 'function'
+    ? Array.isArray
+    : function (xs) {
+        return Object.prototype.toString.call(xs) === '[object Array]'
+    }
+;
+function indexOf (xs, x) {
+    if (xs.indexOf) return xs.indexOf(x);
+    for (var i = 0; i < xs.length; i++) {
+        if (x === xs[i]) return i;
+    }
+    return -1;
+}
+
+// By default EventEmitters will print a warning if more than
+// 10 listeners are added to it. This is a useful default which
+// helps finding memory leaks.
+//
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+var defaultMaxListeners = 10;
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!this._events) this._events = {};
+  this._events.maxListeners = n;
+};
+
+
+EventEmitter.prototype.emit = function(type) {
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events || !this._events.error ||
+        (isArray(this._events.error) && !this._events.error.length))
+    {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+      return false;
+    }
+  }
+
+  if (!this._events) return false;
+  var handler = this._events[type];
+  if (!handler) return false;
+
+  if (typeof handler == 'function') {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        var args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+    return true;
+
+  } else if (isArray(handler)) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      listeners[i].apply(this, args);
+    }
+    return true;
+
+  } else {
+    return false;
+  }
+};
+
+// EventEmitter is defined in src/node_events.cc
+// EventEmitter.prototype.emit() is also defined there.
+EventEmitter.prototype.addListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('addListener only takes instances of Function');
+  }
+
+  if (!this._events) this._events = {};
+
+  // To avoid recursion in the case that type == "newListeners"! Before
+  // adding it to the listeners, first emit "newListeners".
+  this.emit('newListener', type, listener);
+
+  if (!this._events[type]) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  } else if (isArray(this._events[type])) {
+
+    // Check for listener leak
+    if (!this._events[type].warned) {
+      var m;
+      if (this._events.maxListeners !== undefined) {
+        m = this._events.maxListeners;
+      } else {
+        m = defaultMaxListeners;
+      }
+
+      if (m && m > 0 && this._events[type].length > m) {
+        this._events[type].warned = true;
+        console.error('(node) warning: possible EventEmitter memory ' +
+                      'leak detected. %d listeners added. ' +
+                      'Use emitter.setMaxListeners() to increase limit.',
+                      this._events[type].length);
+        console.trace();
+      }
+    }
+
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  } else {
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  var self = this;
+  self.on(type, function g() {
+    self.removeListener(type, g);
+    listener.apply(this, arguments);
+  });
+
+  return this;
+};
+
+EventEmitter.prototype.removeListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('removeListener only takes instances of Function');
+  }
+
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (!this._events || !this._events[type]) return this;
+
+  var list = this._events[type];
+
+  if (isArray(list)) {
+    var i = indexOf(list, listener);
+    if (i < 0) return this;
+    list.splice(i, 1);
+    if (list.length == 0)
+      delete this._events[type];
+  } else if (this._events[type] === listener) {
+    delete this._events[type];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  if (arguments.length === 0) {
+    this._events = {};
+    return this;
+  }
+
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (type && this._events && this._events[type]) this._events[type] = null;
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  if (!this._events) this._events = {};
+  if (!this._events[type]) this._events[type] = [];
+  if (!isArray(this._events[type])) {
+    this._events[type] = [this._events[type]];
+  }
+  return this._events[type];
+};
+
+})(require("__browserify_process"))
+},{"__browserify_process":5}],11:[function(require,module,exports){
 (function(){// Uses Node, AMD or browser globals to create a module.
 
 // If you want something that will work in other stricter CommonJS environments,
@@ -11833,92 +11833,6 @@ return jQuery;
 })( window ); }));
 
 })()
-},{}],13:[function(require,module,exports){
-(function (exports) {
-	'use strict';
-
-	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-	function b64ToByteArray(b64) {
-		var i, j, l, tmp, placeHolders, arr;
-	
-		if (b64.length % 4 > 0) {
-			throw 'Invalid string. Length must be a multiple of 4';
-		}
-
-		// the number of equal signs (place holders)
-		// if there are two placeholders, than the two characters before it
-		// represent one byte
-		// if there is only one, then the three characters before it represent 2 bytes
-		// this is just a cheap hack to not do indexOf twice
-		placeHolders = b64.indexOf('=');
-		placeHolders = placeHolders > 0 ? b64.length - placeHolders : 0;
-
-		// base64 is 4/3 + up to two characters of the original data
-		arr = [];//new Uint8Array(b64.length * 3 / 4 - placeHolders);
-
-		// if there are placeholders, only get up to the last complete 4 chars
-		l = placeHolders > 0 ? b64.length - 4 : b64.length;
-
-		for (i = 0, j = 0; i < l; i += 4, j += 3) {
-			tmp = (lookup.indexOf(b64[i]) << 18) | (lookup.indexOf(b64[i + 1]) << 12) | (lookup.indexOf(b64[i + 2]) << 6) | lookup.indexOf(b64[i + 3]);
-			arr.push((tmp & 0xFF0000) >> 16);
-			arr.push((tmp & 0xFF00) >> 8);
-			arr.push(tmp & 0xFF);
-		}
-
-		if (placeHolders === 2) {
-			tmp = (lookup.indexOf(b64[i]) << 2) | (lookup.indexOf(b64[i + 1]) >> 4);
-			arr.push(tmp & 0xFF);
-		} else if (placeHolders === 1) {
-			tmp = (lookup.indexOf(b64[i]) << 10) | (lookup.indexOf(b64[i + 1]) << 4) | (lookup.indexOf(b64[i + 2]) >> 2);
-			arr.push((tmp >> 8) & 0xFF);
-			arr.push(tmp & 0xFF);
-		}
-
-		return arr;
-	}
-
-	function uint8ToBase64(uint8) {
-		var i,
-			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
-			output = "",
-			temp, length;
-
-		function tripletToBase64 (num) {
-			return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F];
-		};
-
-		// go through the array every three bytes, we'll deal with trailing stuff later
-		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
-			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2]);
-			output += tripletToBase64(temp);
-		}
-
-		// pad the end with zeros, but make sure to not forget the extra bytes
-		switch (extraBytes) {
-			case 1:
-				temp = uint8[uint8.length - 1];
-				output += lookup[temp >> 2];
-				output += lookup[(temp << 4) & 0x3F];
-				output += '==';
-				break;
-			case 2:
-				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1]);
-				output += lookup[temp >> 10];
-				output += lookup[(temp >> 4) & 0x3F];
-				output += lookup[(temp << 2) & 0x3F];
-				output += '=';
-				break;
-		}
-
-		return output;
-	}
-
-	module.exports.toByteArray = b64ToByteArray;
-	module.exports.fromByteArray = uint8ToBase64;
-}());
-
 },{}],14:[function(require,module,exports){
 var punycode = { encode : function (s) { return s } };
 
@@ -12525,7 +12439,93 @@ function parseHost(host) {
   return out;
 }
 
-},{"querystring":15}],7:[function(require,module,exports){
+},{"querystring":15}],13:[function(require,module,exports){
+(function (exports) {
+	'use strict';
+
+	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+	function b64ToByteArray(b64) {
+		var i, j, l, tmp, placeHolders, arr;
+	
+		if (b64.length % 4 > 0) {
+			throw 'Invalid string. Length must be a multiple of 4';
+		}
+
+		// the number of equal signs (place holders)
+		// if there are two placeholders, than the two characters before it
+		// represent one byte
+		// if there is only one, then the three characters before it represent 2 bytes
+		// this is just a cheap hack to not do indexOf twice
+		placeHolders = b64.indexOf('=');
+		placeHolders = placeHolders > 0 ? b64.length - placeHolders : 0;
+
+		// base64 is 4/3 + up to two characters of the original data
+		arr = [];//new Uint8Array(b64.length * 3 / 4 - placeHolders);
+
+		// if there are placeholders, only get up to the last complete 4 chars
+		l = placeHolders > 0 ? b64.length - 4 : b64.length;
+
+		for (i = 0, j = 0; i < l; i += 4, j += 3) {
+			tmp = (lookup.indexOf(b64[i]) << 18) | (lookup.indexOf(b64[i + 1]) << 12) | (lookup.indexOf(b64[i + 2]) << 6) | lookup.indexOf(b64[i + 3]);
+			arr.push((tmp & 0xFF0000) >> 16);
+			arr.push((tmp & 0xFF00) >> 8);
+			arr.push(tmp & 0xFF);
+		}
+
+		if (placeHolders === 2) {
+			tmp = (lookup.indexOf(b64[i]) << 2) | (lookup.indexOf(b64[i + 1]) >> 4);
+			arr.push(tmp & 0xFF);
+		} else if (placeHolders === 1) {
+			tmp = (lookup.indexOf(b64[i]) << 10) | (lookup.indexOf(b64[i + 1]) << 4) | (lookup.indexOf(b64[i + 2]) >> 2);
+			arr.push((tmp >> 8) & 0xFF);
+			arr.push(tmp & 0xFF);
+		}
+
+		return arr;
+	}
+
+	function uint8ToBase64(uint8) {
+		var i,
+			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
+			output = "",
+			temp, length;
+
+		function tripletToBase64 (num) {
+			return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F];
+		};
+
+		// go through the array every three bytes, we'll deal with trailing stuff later
+		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
+			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2]);
+			output += tripletToBase64(temp);
+		}
+
+		// pad the end with zeros, but make sure to not forget the extra bytes
+		switch (extraBytes) {
+			case 1:
+				temp = uint8[uint8.length - 1];
+				output += lookup[temp >> 2];
+				output += lookup[(temp << 4) & 0x3F];
+				output += '==';
+				break;
+			case 2:
+				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1]);
+				output += lookup[temp >> 10];
+				output += lookup[(temp >> 4) & 0x3F];
+				output += lookup[(temp << 2) & 0x3F];
+				output += '=';
+				break;
+		}
+
+		return output;
+	}
+
+	module.exports.toByteArray = b64ToByteArray;
+	module.exports.fromByteArray = uint8ToBase64;
+}());
+
+},{}],8:[function(require,module,exports){
 var buffer = require('buffer')
 
 exports.uint8ToBuffer = function(array) {
@@ -13678,7 +13678,108 @@ exports.hex_md5 = hex_md5;
 exports.b64_md5 = b64_md5;
 exports.any_md5 = any_md5;
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
+(function(process){var parse = require('url').parse
+var through = require('through')
+var pipeline = require('stream-combiner')
+
+var crypto = require('./crypto')
+var util = require('./util')
+
+function mega(email, pass, cb) {
+  return new mega.Storage(email, pass, cb)
+}
+
+module.exports = mega
+
+mega.file = function(opt) {
+  if (typeof opt === 'string') {
+    var url = parse(opt)
+
+    var split
+    if (url.hostname !== 'mega.co.nz' || !url.hash
+      || (split = url.hash.split('!')).length != 3) {
+        throw('Wrong URL supplied.')
+    }
+    opt = {downloadId: split[1], key: split[2]}
+  }
+  return new mega.File(opt)
+}
+
+mega.encrypt = function(key) {
+  key = crypto.formatKey(key)
+
+  if (!key) {
+    key = require('crypto').randomBytes(24)
+  }
+  if (!(key instanceof Buffer)) {
+    key = new Buffer(key)
+  }
+
+  var stream = through(write, end)
+
+  if (key.length != 24) {
+    return process.nextTick(function() {
+      stream.emit('error', new Error('Wrong key length. Key must be 192bit.'))
+    })
+  }
+
+  var aes = new crypto.AES(key.slice(0, 16))
+  var ctr = new crypto.CTR(aes, [key.readInt32BE(16), key.readInt32BE(20)])
+
+  function write(d) {
+    ctr.encrypt(d)
+    this.emit('data', d)
+  }
+
+  function end() {
+    var mac = ctr.condensedMac()
+    var newkey = new Buffer(32)
+    key.copy(newkey)
+    newkey.writeInt32BE(mac[0]^mac[1], 24)
+    newkey.writeInt32BE(mac[2]^mac[3], 28)
+    for (var i = 0; i < 16; i++) {
+      newkey.writeUInt8(newkey.readUInt8(i) ^ newkey.readUInt8(16 + i), i)
+    }
+    stream.key = newkey
+    this.emit('end')
+  }
+
+  return stream = pipeline(util.chunkSizeSafe(16), stream)
+
+}
+
+mega.decrypt = function(key) {
+  key = crypto.formatKey(key)
+
+  var stream = through(write, end)
+
+  var aes = mega.File.getCipher(key)
+  var ctr = new crypto.CTR(aes, [key.readInt32BE(16), key.readInt32BE(20)])
+
+  function write(d) {
+    ctr.decrypt(d)
+    this.emit('data', d)
+  }
+
+  function end() {
+    var mac = ctr.condensedMac()
+    if ((mac[0]^mac[1]) != key.readInt32BE(24) || (mac[2]^mac[3]) != key.readInt32BE(28)) {
+      return this.emit('error', new Error('MAC verification failed'))
+    }
+    this.emit('end')
+  }
+
+  return pipeline(util.chunkSizeSafe(16), stream)
+}
+
+
+mega.Storage = require('./storage').Storage
+mega.File = require('./file').File
+
+
+})(require("__browserify_process"))
+},{"url":14,"crypto":17,"./util":22,"./storage":23,"./file":24,"./crypto":25,"through":26,"stream-combiner":27,"__browserify_process":5}],9:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -13804,315 +13905,7 @@ Reactive.prototype.bind = function(name, fn) {
 
 bindings(exports.bind);
 
-},{"./binding":22,"./bindings":23,"debug":24,"query":25}],9:[function(require,module,exports){
-(function(process){var parse = require('url').parse
-var through = require('through')
-var pipeline = require('stream-combiner')
-
-var crypto = require('./crypto')
-var util = require('./util')
-
-function mega(email, pass, cb) {
-  return new mega.Storage(email, pass, cb)
-}
-
-module.exports = mega
-
-mega.file = function(opt) {
-  if (typeof opt === 'string') {
-    var url = parse(opt)
-
-    var split
-    if (url.hostname !== 'mega.co.nz' || !url.hash
-      || (split = url.hash.split('!')).length != 3) {
-        throw('Wrong URL supplied.')
-    }
-    opt = {downloadId: split[1], key: split[2]}
-  }
-  return new mega.File(opt)
-}
-
-mega.encrypt = function(key) {
-  key = crypto.formatKey(key)
-
-  if (!key) {
-    key = require('crypto').randomBytes(24)
-  }
-  if (!(key instanceof Buffer)) {
-    key = new Buffer(key)
-  }
-
-  var stream = through(write, end)
-
-  if (key.length != 24) {
-    return process.nextTick(function() {
-      stream.emit('error', new Error('Wrong key length. Key must be 192bit.'))
-    })
-  }
-
-  var aes = new crypto.AES(key.slice(0, 16))
-  var ctr = new crypto.CTR(aes, [key.readInt32BE(16), key.readInt32BE(20)])
-
-  function write(d) {
-    ctr.encrypt(d)
-    this.emit('data', d)
-  }
-
-  function end() {
-    var mac = ctr.condensedMac()
-    var newkey = new Buffer(32)
-    key.copy(newkey)
-    newkey.writeInt32BE(mac[0]^mac[1], 24)
-    newkey.writeInt32BE(mac[2]^mac[3], 28)
-    for (var i = 0; i < 16; i++) {
-      newkey.writeUInt8(newkey.readUInt8(i) ^ newkey.readUInt8(16 + i), i)
-    }
-    stream.key = newkey
-    this.emit('end')
-  }
-
-  return stream = pipeline(util.chunkSizeSafe(16), stream)
-
-}
-
-mega.decrypt = function(key) {
-  key = crypto.formatKey(key)
-
-  var stream = through(write, end)
-
-  var aes = mega.File.getCipher(key)
-  var ctr = new crypto.CTR(aes, [key.readInt32BE(16), key.readInt32BE(20)])
-
-  function write(d) {
-    ctr.decrypt(d)
-    this.emit('data', d)
-  }
-
-  function end() {
-    var mac = ctr.condensedMac()
-    if ((mac[0]^mac[1]) != key.readInt32BE(24) || (mac[2]^mac[3]) != key.readInt32BE(28)) {
-      return this.emit('error', new Error('MAC verification failed'))
-    }
-    this.emit('end')
-  }
-
-  return pipeline(util.chunkSizeSafe(16), stream)
-}
-
-
-mega.Storage = require('./storage').Storage
-mega.File = require('./file').File
-
-
-})(require("__browserify_process"))
-},{"url":14,"crypto":17,"./util":26,"./storage":27,"./file":28,"./crypto":29,"through":30,"stream-combiner":31,"__browserify_process":5}],16:[function(require,module,exports){
-var Buffer = require('buffer').Buffer
-var uint8 = require('./')
-
-var copy_ = Buffer.prototype.copy
-
-Buffer.prototype.copy = function(target, target_start, start, end) {
-  if (!target.parent.buffer || !this.parent.buffer) {
-    return copy_.apply(this, arguments)
-  }
-
-  // from toots/buffer-browserify
-  var source = this;
-  start || (start = 0);
-  end || (end = this.length);
-  target_start || (target_start = 0);
-
-  if (end < start) throw new Error('sourceEnd < sourceStart');
-
-  // Copy 0 bytes; we're done
-  if (end === start) return 0;
-  if (target.length == 0 || source.length == 0) return 0;
-
-  if (target_start < 0 || target_start >= target.length) {
-    throw new Error('targetStart out of bounds');
-  }
-
-  if (start < 0 || start >= source.length) {
-    throw new Error('sourceStart out of bounds');
-  }
-
-  if (end < 0 || end > source.length) {
-    throw new Error('sourceEnd out of bounds');
-  }
-
-  // Are we oob?
-  if (end > this.length) {
-    end = this.length;
-  }
-
-  if (target.length - target_start < end - start) {
-    end = target.length - target_start + start;
-  }
-
-  var slice = new Uint8Array(this.parent.buffer,
-    this.parent.byteOffset + this.offset + start, end - start)
-  new Uint8Array(target.parent.buffer).
-    set(slice, target.parent.byteOffset + target.offset + target_start)
-}
-
-
-Buffer.concat = function (list, totalLength) {
-  // from toots/buffer-browserify
-  if (!Array.isArray(list)) {
-    throw new Error("Usage: Buffer.concat(list, [totalLength])\n \
-      list should be an Array.");
-  }
-
-  if (list.length === 0) {
-    return new Buffer(0);
-  } else if (list.length === 1) {
-    return list[0];
-  }
-
-  if (typeof totalLength !== 'number') {
-    totalLength = 0;
-    for (var i = 0; i < list.length; i++) {
-      var buf = list[i];
-      totalLength += buf.length;
-    }
-  }
-
-  var buffer = uint8.uint8ToBuffer(new Uint8Array(totalLength));
-  var pos = 0;
-  for (var i = 0; i < list.length; i++) {
-    var buf = list[i];
-    buf.copy(buffer, pos);
-    pos += buf.length;
-  }
-  return buffer;
-};
-},{"buffer":3,"./":7}],24:[function(require,module,exports){
-
-/**
- * Expose `debug()` as the module.
- */
-
-module.exports = debug;
-
-/**
- * Create a debugger with the given `name`.
- *
- * @param {String} name
- * @return {Type}
- * @api public
- */
-
-function debug(name) {
-  if (!debug.enabled(name)) return function(){};
-
-  return function(fmt){
-    var curr = new Date;
-    var ms = curr - (debug[name] || curr);
-    debug[name] = curr;
-
-    fmt = name
-      + ' '
-      + fmt
-      + ' +' + debug.humanize(ms);
-
-    // This hackery is required for IE8
-    // where `console.log` doesn't have 'apply'
-    window.console
-      && console.log
-      && Function.prototype.apply.call(console.log, console, arguments);
-  }
-}
-
-/**
- * The currently active debug mode names.
- */
-
-debug.names = [];
-debug.skips = [];
-
-/**
- * Enables a debug mode by name. This can include modes
- * separated by a colon and wildcards.
- *
- * @param {String} name
- * @api public
- */
-
-debug.enable = function(name) {
-  try {
-    localStorage.debug = name;
-  } catch(e){}
-
-  var split = (name || '').split(/[\s,]+/)
-    , len = split.length;
-
-  for (var i = 0; i < len; i++) {
-    name = split[i].replace('*', '.*?');
-    if (name[0] === '-') {
-      debug.skips.push(new RegExp('^' + name.substr(1) + '$'));
-    }
-    else {
-      debug.names.push(new RegExp('^' + name + '$'));
-    }
-  }
-};
-
-/**
- * Disable debug output.
- *
- * @api public
- */
-
-debug.disable = function(){
-  debug.enable('');
-};
-
-/**
- * Humanize the given `ms`.
- *
- * @param {Number} m
- * @return {String}
- * @api private
- */
-
-debug.humanize = function(ms) {
-  var sec = 1000
-    , min = 60 * 1000
-    , hour = 60 * min;
-
-  if (ms >= hour) return (ms / hour).toFixed(1) + 'h';
-  if (ms >= min) return (ms / min).toFixed(1) + 'm';
-  if (ms >= sec) return (ms / sec | 0) + 's';
-  return ms + 'ms';
-};
-
-/**
- * Returns true if the given mode name is enabled, false otherwise.
- *
- * @param {String} name
- * @return {Boolean}
- * @api public
- */
-
-debug.enabled = function(name) {
-  for (var i = 0, len = debug.skips.length; i < len; i++) {
-    if (debug.skips[i].test(name)) {
-      return false;
-    }
-  }
-  for (var i = 0, len = debug.names.length; i < len; i++) {
-    if (debug.names[i].test(name)) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// persist
-
-if (window.localStorage) debug.enable(localStorage.debug);
-
-},{}],30:[function(require,module,exports){
+},{"./binding":28,"./bindings":29,"debug":30,"query":31}],26:[function(require,module,exports){
 (function(process){var Stream = require('stream')
 
 // through
@@ -14218,7 +14011,7 @@ function through (write, end) {
 
 
 })(require("__browserify_process"))
-},{"stream":32,"__browserify_process":5}],29:[function(require,module,exports){
+},{"stream":32,"__browserify_process":5}],25:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var sjcl = require('./sjcl')
@@ -14954,7 +14747,214 @@ function b2s(b)
 }
 
 
-},{}],25:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
+
+/**
+ * Expose `debug()` as the module.
+ */
+
+module.exports = debug;
+
+/**
+ * Create a debugger with the given `name`.
+ *
+ * @param {String} name
+ * @return {Type}
+ * @api public
+ */
+
+function debug(name) {
+  if (!debug.enabled(name)) return function(){};
+
+  return function(fmt){
+    var curr = new Date;
+    var ms = curr - (debug[name] || curr);
+    debug[name] = curr;
+
+    fmt = name
+      + ' '
+      + fmt
+      + ' +' + debug.humanize(ms);
+
+    // This hackery is required for IE8
+    // where `console.log` doesn't have 'apply'
+    window.console
+      && console.log
+      && Function.prototype.apply.call(console.log, console, arguments);
+  }
+}
+
+/**
+ * The currently active debug mode names.
+ */
+
+debug.names = [];
+debug.skips = [];
+
+/**
+ * Enables a debug mode by name. This can include modes
+ * separated by a colon and wildcards.
+ *
+ * @param {String} name
+ * @api public
+ */
+
+debug.enable = function(name) {
+  try {
+    localStorage.debug = name;
+  } catch(e){}
+
+  var split = (name || '').split(/[\s,]+/)
+    , len = split.length;
+
+  for (var i = 0; i < len; i++) {
+    name = split[i].replace('*', '.*?');
+    if (name[0] === '-') {
+      debug.skips.push(new RegExp('^' + name.substr(1) + '$'));
+    }
+    else {
+      debug.names.push(new RegExp('^' + name + '$'));
+    }
+  }
+};
+
+/**
+ * Disable debug output.
+ *
+ * @api public
+ */
+
+debug.disable = function(){
+  debug.enable('');
+};
+
+/**
+ * Humanize the given `ms`.
+ *
+ * @param {Number} m
+ * @return {String}
+ * @api private
+ */
+
+debug.humanize = function(ms) {
+  var sec = 1000
+    , min = 60 * 1000
+    , hour = 60 * min;
+
+  if (ms >= hour) return (ms / hour).toFixed(1) + 'h';
+  if (ms >= min) return (ms / min).toFixed(1) + 'm';
+  if (ms >= sec) return (ms / sec | 0) + 's';
+  return ms + 'ms';
+};
+
+/**
+ * Returns true if the given mode name is enabled, false otherwise.
+ *
+ * @param {String} name
+ * @return {Boolean}
+ * @api public
+ */
+
+debug.enabled = function(name) {
+  for (var i = 0, len = debug.skips.length; i < len; i++) {
+    if (debug.skips[i].test(name)) {
+      return false;
+    }
+  }
+  for (var i = 0, len = debug.names.length; i < len; i++) {
+    if (debug.names[i].test(name)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// persist
+
+if (window.localStorage) debug.enable(localStorage.debug);
+
+},{}],16:[function(require,module,exports){
+var Buffer = require('buffer').Buffer
+var uint8 = require('./')
+
+var copy_ = Buffer.prototype.copy
+
+Buffer.prototype.copy = function(target, target_start, start, end) {
+  if (!target.parent.buffer || !this.parent.buffer) {
+    return copy_.apply(this, arguments)
+  }
+
+  // from toots/buffer-browserify
+  var source = this;
+  start || (start = 0);
+  end || (end = this.length);
+  target_start || (target_start = 0);
+
+  if (end < start) throw new Error('sourceEnd < sourceStart');
+
+  // Copy 0 bytes; we're done
+  if (end === start) return 0;
+  if (target.length == 0 || source.length == 0) return 0;
+
+  if (target_start < 0 || target_start >= target.length) {
+    throw new Error('targetStart out of bounds');
+  }
+
+  if (start < 0 || start >= source.length) {
+    throw new Error('sourceStart out of bounds');
+  }
+
+  if (end < 0 || end > source.length) {
+    throw new Error('sourceEnd out of bounds');
+  }
+
+  // Are we oob?
+  if (end > this.length) {
+    end = this.length;
+  }
+
+  if (target.length - target_start < end - start) {
+    end = target.length - target_start + start;
+  }
+
+  var slice = new Uint8Array(this.parent.buffer,
+    this.parent.byteOffset + this.offset + start, end - start)
+  new Uint8Array(target.parent.buffer).
+    set(slice, target.parent.byteOffset + target.offset + target_start)
+}
+
+
+Buffer.concat = function (list, totalLength) {
+  // from toots/buffer-browserify
+  if (!Array.isArray(list)) {
+    throw new Error("Usage: Buffer.concat(list, [totalLength])\n \
+      list should be an Array.");
+  }
+
+  if (list.length === 0) {
+    return new Buffer(0);
+  } else if (list.length === 1) {
+    return list[0];
+  }
+
+  if (typeof totalLength !== 'number') {
+    totalLength = 0;
+    for (var i = 0; i < list.length; i++) {
+      var buf = list[i];
+      totalLength += buf.length;
+    }
+  }
+
+  var buffer = uint8.uint8ToBuffer(new Uint8Array(totalLength));
+  var pos = 0;
+  for (var i = 0; i < list.length; i++) {
+    var buf = list[i];
+    buf.copy(buffer, pos);
+    pos += buf.length;
+  }
+  return buffer;
+};
+},{"buffer":3,"./":8}],31:[function(require,module,exports){
 
 function one(selector, el) {
   return el.querySelector(selector);
@@ -15375,7 +15375,7 @@ asyncList.prototype.compile = function (mapper) {
 };
 module.exports = asyncList;
 })(require("__browserify_process"))
-},{"eventproxy":35,"__browserify_process":5}],26:[function(require,module,exports){
+},{"eventproxy":35,"__browserify_process":5}],22:[function(require,module,exports){
 var through = require('through')
 
 exports.stream2cb = function(stream, cb) {
@@ -15434,418 +15434,7 @@ exports.detectSize = function(cb) {
     this.emit('end')
   })
 }
-},{"through":30}],22:[function(require,module,exports){
-
-/**
- * Module dependencies.
- */
-
-var parse = require('format-parser');
-
-/**
- * Expose `Binding`.
- */
-
-module.exports = Binding;
-
-/**
- * Initialize a binding.
- *
- * @api private
- */
-
-function Binding(name, view, el, fn) {
-  this.name = name;
-  this.view = view;
-  this.obj = view.obj;
-  this.fns = view.fns;
-  this.el = el;
-  this.fn = fn;
-}
-
-/**
- * Apply the binding.
- *
- * @api private
- */
-
-Binding.prototype.bind = function() {
-  var val = this.el.getAttribute(this.name);
-  this.fn(this.el, val, this.obj);
-};
-
-/**
- * Perform interpolation on `name`.
- *
- * @param {String} name
- * @return {String}
- * @api public
- */
-
-Binding.prototype.interpolate = function(name) {
-  var self = this;
-  name = clean(name);
-
-  if (~name.indexOf('{')) {
-    return name.replace(/{([^}]+)}/g, function(_, name){
-      return self.value(name);
-    });
-  }
-
-  return this.formatted(name);
-};
-
-/**
- * Return value for property `name`.
- *
- *  - check if the "view" has a `name` method
- *  - check if the "model" has a `name` method
- *  - check if the "model" has a `name` property
- *
- * @param {String} name
- * @return {Mixed}
- * @api public
- */
-
-Binding.prototype.value = function(name) {
-  var self = this;
-  var obj = this.obj;
-  var view = this.view.fns;
-  name = clean(name);
-
-  // view method
-  if ('function' == typeof view[name]) {
-    return view[name]();
-  }
-
-  // view value
-  if (view.hasOwnProperty(name)) {
-    return view[name];
-  }
-
-  // getter-style method
-  if ('function' == typeof obj[name]) {
-    return obj[name]();
-  }
-
-  // value
-  return obj[name];
-};
-
-/**
- * Return formatted property.
- *
- * @param {String} fmt
- * @return {Mixed}
- * @api public
- */
-
-Binding.prototype.formatted = function(fmt) {
-  var calls = parse(clean(fmt));
-  var name = calls[0].name;
-  var val = this.value(name);
-
-  for (var i = 1; i < calls.length; ++i) {
-    var call = calls[i];
-    call.args.unshift(val);
-    var fn = this.fns[call.name];
-    val = fn.apply(this.fns, call.args);
-  }
-
-  return val;
-};
-
-/**
- * Define subscription `fn`.
- *
- * @param {Function} fn
- * @api public
- */
-
-Binding.prototype.subscribe = function(fn){
-  this._subscribe = fn;
-};
-
-/**
- * Define unsubscribe `fn`.
- *
- * @param {Function} fn
- * @api public
- */
-
-Binding.prototype.unsubscribe = function(fn){
-  this._unsubscribe = fn;
-};
-
-/**
- * Invoke `fn` on changes.
- *
- * @param {Function} fn
- * @api public
- */
-
-Binding.prototype.change = function(fn) {
-  fn.call(this);
-
-  var self = this;
-  var obj = this.obj;
-  var sub = this._subscribe || Binding.subscribe;
-  var val = this.el.getAttribute(this.name);
-
-  // computed props
-  var parts = val.split('<');
-  val = parts[0];
-  var computed = parts[1];
-  if (computed) computed = computed.trim().split(/\s+/);
-
-  // interpolation
-  if (hasInterpolation(val)) {
-    var props = interpolationProps(val);
-    props.forEach(function(prop){
-      sub(obj, prop, fn.bind(self));
-    });
-    return;
-  }
-
-  // formatting
-  var calls = parse(val);
-  var prop = calls[0].name;
-
-  // computed props
-  if (computed) {
-    computed.forEach(function(prop){
-      sub(obj, prop, fn.bind(self));
-    });
-    return;
-  }
-
-  // bind to prop
-  sub(obj, prop, fn.bind(this));
-};
-
-/**
- * Default subscription method.
- */
-
-Binding.subscribe = function(obj, prop, fn) {
-  if (!obj.on) return;
-  obj.on('change ' + prop, fn);
-};
-
-/**
- * Default unsubscription method.
- */
-
-Binding.unsubscribe = function(obj, prop, fn) {
-  if (!obj.off) return;
-  obj.off('change ' + prop, fn);
-};
-
-/**
- * Return interpolation property names in `str`,
- * for example "{foo} and {bar}" would return
- * ['foo', 'bar'].
- *
- * @param {String} str
- * @return {Array}
- * @api private
- */
-
-function interpolationProps(str) {
-  var m;
-  var arr = [];
-  var re = /\{([^}]+)\}/g;
-  while (m = re.exec(str)) {
-    arr.push(m[1]);
-  }
-  return arr;
-}
-
-/**
- * Check if `str` has interpolation.
- *
- * @param {String} str
- * @return {Boolean}
- * @api private
- */
-
-function hasInterpolation(str) {
-  return ~str.indexOf('{');
-}
-
-/**
- * Remove computed properties notation from `str`.
- *
- * @param {String} str
- * @return {String}
- * @api private
- */
-
-function clean(str) {
-  return str.split('<')[0].trim();
-}
-
-},{"format-parser":36}],23:[function(require,module,exports){
-/**
- * Module dependencies.
- */
-
-var event = require('event')
-  , classes = require('classes');
-
-/**
- * Attributes supported.
- */
-
-var attrs = [
-  'id',
-  'src',
-  'rel',
-  'cols',
-  'rows',
-  'name',
-  'href',
-  'title',
-  'style',
-  'width',
-  'value',
-  'height',
-  'tabindex',
-  'placeholder'
-];
-
-/**
- * Events supported.
- */
-
-var events = [
-  'change',
-  'click',
-  'mousedown',
-  'mouseup',
-  'blur',
-  'focus',
-  'input',
-  'keydown',
-  'keypress',
-  'keyup'
-];
-
-/**
- * Apply bindings.
- */
-
-module.exports = function(bind){
-
-  /**
-   * Generate attribute bindings.
-   */
-
-  attrs.forEach(function(attr){
-    bind('data-' + attr, function(el, name, obj){
-      this.change(function(){
-        el.setAttribute(attr, this.interpolate(name));
-      });
-    });
-  });
-
-/**
- * Append child element.
- */
-
-  bind('data-append', function(el, name){
-    var other = this.value(name);
-    el.appendChild(other);
-  });
-
-/**
- * Replace element.
- */
-
-  bind('data-replace', function(el, name){
-    var other = this.value(name);
-    el.parentNode.replaceChild(other, el);
-  });
-
-  /**
-   * Show binding.
-   */
-
-  bind('data-show', function(el, name){
-    this.change(function(){
-      if (this.value(name)) {
-        classes(el).add('show').remove('hide');
-      } else {
-        classes(el).remove('show').add('hide');
-      }
-    });
-  });
-
-  /**
-   * Hide binding.
-   */
-
-  bind('data-hide', function(el, name){
-    this.change(function(){
-      if (this.value(name)) {
-        classes(el).remove('show').add('hide');
-      } else {
-        classes(el).add('show').remove('hide');
-      }
-    });
-  });
-
-  /**
-   * Checked binding.
-   */
-
-  bind('data-checked', function(el, name){
-    this.change(function(){
-      if (this.value(name)) {
-        el.setAttribute('checked', 'checked');
-      } else {
-        el.removeAttribute('checked');
-      }
-    });
-  });
-
-  /**
-   * Text binding.
-   */
-
-  bind('data-text', function(el, name){
-    this.change(function(){
-      el.textContent = this.interpolate(name);
-    });
-  });
-
-  /**
-   * HTML binding.
-   */
-
-  bind('data-html', function(el, name){
-    this.change(function(){
-      el.innerHTML = this.formatted(name);
-    });
-  });
-
-  /**
-   * Generate event bindings.
-   */
-
-  events.forEach(function(name){
-    bind('on-' + name, function(el, method){
-      var fns = this.view.fns
-      event.bind(el, name, function(e){
-        var fn = fns[method];
-        if (!fn) throw new Error('method .' + method + '() missing');
-        fns[method](e);
-      });
-    });
-  });
-};
-
-},{"event":37,"classes":38}],27:[function(require,module,exports){
+},{"through":26}],23:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var pipeline = require('stream-combiner')
@@ -16219,7 +15808,7 @@ Storage.prototype.close = function() {
   this.api.close()
 }
 
-},{"events":4,"util":2,"crypto":17,"./crypto/rsa":34,"./api":39,"./file":28,"./mega":9,"./util":26,"./crypto":29,"through":30,"stream-combiner":31,"request":40}],28:[function(require,module,exports){
+},{"events":4,"util":2,"crypto":17,"./crypto/rsa":34,"./api":36,"./file":24,"./mega":7,"./util":22,"./crypto":25,"through":26,"stream-combiner":27,"request":37}],24:[function(require,module,exports){
 (function(process){var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var request = require('request')
@@ -16370,7 +15959,418 @@ File.prototype.link = function(noKey, cb) {
   })
 }
 })(require("__browserify_process"))
-},{"events":4,"util":2,"./api":39,"./mega":9,"./util":26,"./crypto":29,"request":40,"__browserify_process":5}],36:[function(require,module,exports){
+},{"events":4,"util":2,"./api":36,"./mega":7,"./util":22,"./crypto":25,"request":37,"__browserify_process":5}],28:[function(require,module,exports){
+
+/**
+ * Module dependencies.
+ */
+
+var parse = require('format-parser');
+
+/**
+ * Expose `Binding`.
+ */
+
+module.exports = Binding;
+
+/**
+ * Initialize a binding.
+ *
+ * @api private
+ */
+
+function Binding(name, view, el, fn) {
+  this.name = name;
+  this.view = view;
+  this.obj = view.obj;
+  this.fns = view.fns;
+  this.el = el;
+  this.fn = fn;
+}
+
+/**
+ * Apply the binding.
+ *
+ * @api private
+ */
+
+Binding.prototype.bind = function() {
+  var val = this.el.getAttribute(this.name);
+  this.fn(this.el, val, this.obj);
+};
+
+/**
+ * Perform interpolation on `name`.
+ *
+ * @param {String} name
+ * @return {String}
+ * @api public
+ */
+
+Binding.prototype.interpolate = function(name) {
+  var self = this;
+  name = clean(name);
+
+  if (~name.indexOf('{')) {
+    return name.replace(/{([^}]+)}/g, function(_, name){
+      return self.value(name);
+    });
+  }
+
+  return this.formatted(name);
+};
+
+/**
+ * Return value for property `name`.
+ *
+ *  - check if the "view" has a `name` method
+ *  - check if the "model" has a `name` method
+ *  - check if the "model" has a `name` property
+ *
+ * @param {String} name
+ * @return {Mixed}
+ * @api public
+ */
+
+Binding.prototype.value = function(name) {
+  var self = this;
+  var obj = this.obj;
+  var view = this.view.fns;
+  name = clean(name);
+
+  // view method
+  if ('function' == typeof view[name]) {
+    return view[name]();
+  }
+
+  // view value
+  if (view.hasOwnProperty(name)) {
+    return view[name];
+  }
+
+  // getter-style method
+  if ('function' == typeof obj[name]) {
+    return obj[name]();
+  }
+
+  // value
+  return obj[name];
+};
+
+/**
+ * Return formatted property.
+ *
+ * @param {String} fmt
+ * @return {Mixed}
+ * @api public
+ */
+
+Binding.prototype.formatted = function(fmt) {
+  var calls = parse(clean(fmt));
+  var name = calls[0].name;
+  var val = this.value(name);
+
+  for (var i = 1; i < calls.length; ++i) {
+    var call = calls[i];
+    call.args.unshift(val);
+    var fn = this.fns[call.name];
+    val = fn.apply(this.fns, call.args);
+  }
+
+  return val;
+};
+
+/**
+ * Define subscription `fn`.
+ *
+ * @param {Function} fn
+ * @api public
+ */
+
+Binding.prototype.subscribe = function(fn){
+  this._subscribe = fn;
+};
+
+/**
+ * Define unsubscribe `fn`.
+ *
+ * @param {Function} fn
+ * @api public
+ */
+
+Binding.prototype.unsubscribe = function(fn){
+  this._unsubscribe = fn;
+};
+
+/**
+ * Invoke `fn` on changes.
+ *
+ * @param {Function} fn
+ * @api public
+ */
+
+Binding.prototype.change = function(fn) {
+  fn.call(this);
+
+  var self = this;
+  var obj = this.obj;
+  var sub = this._subscribe || Binding.subscribe;
+  var val = this.el.getAttribute(this.name);
+
+  // computed props
+  var parts = val.split('<');
+  val = parts[0];
+  var computed = parts[1];
+  if (computed) computed = computed.trim().split(/\s+/);
+
+  // interpolation
+  if (hasInterpolation(val)) {
+    var props = interpolationProps(val);
+    props.forEach(function(prop){
+      sub(obj, prop, fn.bind(self));
+    });
+    return;
+  }
+
+  // formatting
+  var calls = parse(val);
+  var prop = calls[0].name;
+
+  // computed props
+  if (computed) {
+    computed.forEach(function(prop){
+      sub(obj, prop, fn.bind(self));
+    });
+    return;
+  }
+
+  // bind to prop
+  sub(obj, prop, fn.bind(this));
+};
+
+/**
+ * Default subscription method.
+ */
+
+Binding.subscribe = function(obj, prop, fn) {
+  if (!obj.on) return;
+  obj.on('change ' + prop, fn);
+};
+
+/**
+ * Default unsubscription method.
+ */
+
+Binding.unsubscribe = function(obj, prop, fn) {
+  if (!obj.off) return;
+  obj.off('change ' + prop, fn);
+};
+
+/**
+ * Return interpolation property names in `str`,
+ * for example "{foo} and {bar}" would return
+ * ['foo', 'bar'].
+ *
+ * @param {String} str
+ * @return {Array}
+ * @api private
+ */
+
+function interpolationProps(str) {
+  var m;
+  var arr = [];
+  var re = /\{([^}]+)\}/g;
+  while (m = re.exec(str)) {
+    arr.push(m[1]);
+  }
+  return arr;
+}
+
+/**
+ * Check if `str` has interpolation.
+ *
+ * @param {String} str
+ * @return {Boolean}
+ * @api private
+ */
+
+function hasInterpolation(str) {
+  return ~str.indexOf('{');
+}
+
+/**
+ * Remove computed properties notation from `str`.
+ *
+ * @param {String} str
+ * @return {String}
+ * @api private
+ */
+
+function clean(str) {
+  return str.split('<')[0].trim();
+}
+
+},{"format-parser":38}],29:[function(require,module,exports){
+/**
+ * Module dependencies.
+ */
+
+var event = require('event')
+  , classes = require('classes');
+
+/**
+ * Attributes supported.
+ */
+
+var attrs = [
+  'id',
+  'src',
+  'rel',
+  'cols',
+  'rows',
+  'name',
+  'href',
+  'title',
+  'style',
+  'width',
+  'value',
+  'height',
+  'tabindex',
+  'placeholder'
+];
+
+/**
+ * Events supported.
+ */
+
+var events = [
+  'change',
+  'click',
+  'mousedown',
+  'mouseup',
+  'blur',
+  'focus',
+  'input',
+  'keydown',
+  'keypress',
+  'keyup'
+];
+
+/**
+ * Apply bindings.
+ */
+
+module.exports = function(bind){
+
+  /**
+   * Generate attribute bindings.
+   */
+
+  attrs.forEach(function(attr){
+    bind('data-' + attr, function(el, name, obj){
+      this.change(function(){
+        el.setAttribute(attr, this.interpolate(name));
+      });
+    });
+  });
+
+/**
+ * Append child element.
+ */
+
+  bind('data-append', function(el, name){
+    var other = this.value(name);
+    el.appendChild(other);
+  });
+
+/**
+ * Replace element.
+ */
+
+  bind('data-replace', function(el, name){
+    var other = this.value(name);
+    el.parentNode.replaceChild(other, el);
+  });
+
+  /**
+   * Show binding.
+   */
+
+  bind('data-show', function(el, name){
+    this.change(function(){
+      if (this.value(name)) {
+        classes(el).add('show').remove('hide');
+      } else {
+        classes(el).remove('show').add('hide');
+      }
+    });
+  });
+
+  /**
+   * Hide binding.
+   */
+
+  bind('data-hide', function(el, name){
+    this.change(function(){
+      if (this.value(name)) {
+        classes(el).remove('show').add('hide');
+      } else {
+        classes(el).add('show').remove('hide');
+      }
+    });
+  });
+
+  /**
+   * Checked binding.
+   */
+
+  bind('data-checked', function(el, name){
+    this.change(function(){
+      if (this.value(name)) {
+        el.setAttribute('checked', 'checked');
+      } else {
+        el.removeAttribute('checked');
+      }
+    });
+  });
+
+  /**
+   * Text binding.
+   */
+
+  bind('data-text', function(el, name){
+    this.change(function(){
+      el.textContent = this.interpolate(name);
+    });
+  });
+
+  /**
+   * HTML binding.
+   */
+
+  bind('data-html', function(el, name){
+    this.change(function(){
+      el.innerHTML = this.formatted(name);
+    });
+  });
+
+  /**
+   * Generate event bindings.
+   */
+
+  events.forEach(function(name){
+    bind('on-' + name, function(el, method){
+      var fns = this.view.fns
+      event.bind(el, name, function(e){
+        var fn = fns[method];
+        if (!fn) throw new Error('method .' + method + '() missing');
+        fns[method](e);
+      });
+    });
+  });
+};
+
+},{"event":39,"classes":40}],38:[function(require,module,exports){
 
 /**
  * Parse the given format `str`.
@@ -16413,7 +16413,7 @@ function parseArgs(str) {
 	return args;
 }
 
-},{}],37:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 
 /**
  * Bind `el` event `type` to `fn`.
@@ -16455,7 +16455,7 @@ exports.unbind = function(el, type, fn, capture){
   return fn;
 };
 
-},{}],31:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var duplexer = require('duplexer')
 
 module.exports = function () {
@@ -16608,7 +16608,7 @@ function duplex(writer, reader) {
         stream.emit("error", err)
     }
 }
-},{"stream":32}],39:[function(require,module,exports){
+},{"stream":32}],36:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var request = require('request')
@@ -16741,7 +16741,7 @@ API.prototype.wait = function(url, sn) {
 API.prototype.close = function() {
   if (this.sn) this.sn.abort()
 }
-},{"events":4,"util":2,"querystring":15,"request":40}],45:[function(require,module,exports){
+},{"events":4,"util":2,"querystring":15,"request":37}],45:[function(require,module,exports){
 (function(){/*global exports */
 /*!
  * This file is used for define the EventProxy library.
@@ -17227,7 +17227,7 @@ API.prototype.close = function() {
 });
 
 })()
-},{}],40:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 (function(process){// Copyright 2010-2012 Mikeal Rogers
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18297,7 +18297,7 @@ Request.prototype.toJSON = toJSON
 
 
 })(require("__browserify_process"))
-},{"http":43,"url":14,"util":2,"stream":32,"querystring":15,"https":42,"tls":44,"./mimetypes":46,"./oauth":47,"./uuid":48,"./forever":49,"./vendor/cookie/jar":50,"./tunnel":51,"./aws":52,"./vendor/cookie":53,"__browserify_process":5}],43:[function(require,module,exports){
+},{"http":43,"url":14,"util":2,"stream":32,"querystring":15,"https":42,"tls":44,"./mimetypes":46,"./oauth":47,"./uuid":48,"./forever":49,"./tunnel":50,"./vendor/cookie/jar":51,"./aws":52,"./vendor/cookie":53,"__browserify_process":5}],43:[function(require,module,exports){
 var http = module.exports;
 var EventEmitter = require('events').EventEmitter;
 var Request = require('./lib/request');
@@ -18674,80 +18674,6 @@ function createConnectionSSL (port, host, options) {
 }
 
 },{"util":2,"http":43,"net":55,"tls":44,"https":42}],50:[function(require,module,exports){
-/*!
-* Tobi - CookieJar
-* Copyright(c) 2010 LearnBoost <dev@learnboost.com>
-* MIT Licensed
-*/
-
-/**
-* Module dependencies.
-*/
-
-var url = require('url');
-
-/**
-* Initialize a new `CookieJar`.
-*
-* @api private
-*/
-
-var CookieJar = exports = module.exports = function CookieJar() {
-  this.cookies = [];
-};
-
-/**
-* Add the given `cookie` to the jar.
-*
-* @param {Cookie} cookie
-* @api private
-*/
-
-CookieJar.prototype.add = function(cookie){
-  this.cookies = this.cookies.filter(function(c){
-    // Avoid duplication (same path, same name)
-    return !(c.name == cookie.name && c.path == cookie.path);
-  });
-  this.cookies.push(cookie);
-};
-
-/**
-* Get cookies for the given `req`.
-*
-* @param {IncomingRequest} req
-* @return {Array}
-* @api private
-*/
-
-CookieJar.prototype.get = function(req){
-  var path = url.parse(req.url).pathname
-    , now = new Date
-    , specificity = {};
-  return this.cookies.filter(function(cookie){
-    if (0 == path.indexOf(cookie.path) && now < cookie.expires
-      && cookie.path.length > (specificity[cookie.name] || 0))
-      return specificity[cookie.name] = cookie.path.length;
-  });
-};
-
-/**
-* Return Cookie string for the given `req`.
-*
-* @param {IncomingRequest} req
-* @return {String}
-* @api private
-*/
-
-CookieJar.prototype.cookieString = function(req){
-  var cookies = this.get(req);
-  if (cookies.length) {
-    return cookies.map(function(cookie){
-      return cookie.name + '=' + cookie.value;
-    }).join('; ');
-  }
-};
-
-},{"url":14}],51:[function(require,module,exports){
 (function(process){'use strict';
 
 var net = require('net');
@@ -18979,7 +18905,81 @@ if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
 exports.debug = debug; // for test
 
 })(require("__browserify_process"))
-},{"net":55,"tls":44,"http":43,"https":42,"events":4,"assert":1,"util":2,"__browserify_process":5}],52:[function(require,module,exports){
+},{"net":55,"tls":44,"http":43,"https":42,"events":4,"assert":1,"util":2,"__browserify_process":5}],51:[function(require,module,exports){
+/*!
+* Tobi - CookieJar
+* Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+* MIT Licensed
+*/
+
+/**
+* Module dependencies.
+*/
+
+var url = require('url');
+
+/**
+* Initialize a new `CookieJar`.
+*
+* @api private
+*/
+
+var CookieJar = exports = module.exports = function CookieJar() {
+  this.cookies = [];
+};
+
+/**
+* Add the given `cookie` to the jar.
+*
+* @param {Cookie} cookie
+* @api private
+*/
+
+CookieJar.prototype.add = function(cookie){
+  this.cookies = this.cookies.filter(function(c){
+    // Avoid duplication (same path, same name)
+    return !(c.name == cookie.name && c.path == cookie.path);
+  });
+  this.cookies.push(cookie);
+};
+
+/**
+* Get cookies for the given `req`.
+*
+* @param {IncomingRequest} req
+* @return {Array}
+* @api private
+*/
+
+CookieJar.prototype.get = function(req){
+  var path = url.parse(req.url).pathname
+    , now = new Date
+    , specificity = {};
+  return this.cookies.filter(function(cookie){
+    if (0 == path.indexOf(cookie.path) && now < cookie.expires
+      && cookie.path.length > (specificity[cookie.name] || 0))
+      return specificity[cookie.name] = cookie.path.length;
+  });
+};
+
+/**
+* Return Cookie string for the given `req`.
+*
+* @param {IncomingRequest} req
+* @return {String}
+* @api private
+*/
+
+CookieJar.prototype.cookieString = function(req){
+  var cookies = this.get(req);
+  if (cookies.length) {
+    return cookies.map(function(cookie){
+      return cookie.name + '=' + cookie.value;
+    }).join('; ');
+  }
+};
+
+},{"url":14}],52:[function(require,module,exports){
 
 /*!
  * knox - auth
@@ -19171,7 +19171,74 @@ exports.canonicalizeResource = function(resource){
     : '');
 };
 
-},{"crypto":17,"url":14}],38:[function(require,module,exports){
+},{"crypto":17,"url":14}],53:[function(require,module,exports){
+/*!
+ * Tobi - Cookie
+ * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
+ * MIT Licensed
+ */
+
+/**
+ * Module dependencies.
+ */
+
+var url = require('url');
+
+/**
+ * Initialize a new `Cookie` with the given cookie `str` and `req`.
+ *
+ * @param {String} str
+ * @param {IncomingRequest} req
+ * @api private
+ */
+
+var Cookie = exports = module.exports = function Cookie(str, req) {
+  this.str = str;
+
+  // Map the key/val pairs
+  str.split(/ *; */).reduce(function(obj, pair){
+   var p = pair.indexOf('=');
+   var key = p > 0 ? pair.substring(0, p).trim() : pair.trim();
+   var lowerCasedKey = key.toLowerCase();
+   var value = p > 0 ? pair.substring(p + 1).trim() : true;
+
+   if (!obj.name) {
+    // First key is the name
+    obj.name = key;
+    obj.value = value;
+   }
+   else if (lowerCasedKey === 'httponly') {
+    obj.httpOnly = value;
+   }
+   else {
+    obj[lowerCasedKey] = value;
+   }
+   return obj;
+  }, this);
+
+  // Expires
+  this.expires = this.expires
+    ? new Date(this.expires)
+    : Infinity;
+
+  // Default or trim path
+  this.path = this.path
+    ? this.path.trim(): req 
+    ? url.parse(req.url).pathname: '/';
+};
+
+/**
+ * Return the original cookie string.
+ *
+ * @return {String}
+ * @api public
+ */
+
+Cookie.prototype.toString = function(){
+  return this.str;
+};
+
+},{"url":14}],40:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -19337,74 +19404,7 @@ ClassList.prototype.contains = function(name){
     : !! ~index(this.array(), name);
 };
 
-},{"indexof":56}],53:[function(require,module,exports){
-/*!
- * Tobi - Cookie
- * Copyright(c) 2010 LearnBoost <dev@learnboost.com>
- * MIT Licensed
- */
-
-/**
- * Module dependencies.
- */
-
-var url = require('url');
-
-/**
- * Initialize a new `Cookie` with the given cookie `str` and `req`.
- *
- * @param {String} str
- * @param {IncomingRequest} req
- * @api private
- */
-
-var Cookie = exports = module.exports = function Cookie(str, req) {
-  this.str = str;
-
-  // Map the key/val pairs
-  str.split(/ *; */).reduce(function(obj, pair){
-   var p = pair.indexOf('=');
-   var key = p > 0 ? pair.substring(0, p).trim() : pair.trim();
-   var lowerCasedKey = key.toLowerCase();
-   var value = p > 0 ? pair.substring(p + 1).trim() : true;
-
-   if (!obj.name) {
-    // First key is the name
-    obj.name = key;
-    obj.value = value;
-   }
-   else if (lowerCasedKey === 'httponly') {
-    obj.httpOnly = value;
-   }
-   else {
-    obj[lowerCasedKey] = value;
-   }
-   return obj;
-  }, this);
-
-  // Expires
-  this.expires = this.expires
-    ? new Date(this.expires)
-    : Infinity;
-
-  // Default or trim path
-  this.path = this.path
-    ? this.path.trim(): req 
-    ? url.parse(req.url).pathname: '/';
-};
-
-/**
- * Return the original cookie string.
- *
- * @return {String}
- * @api public
- */
-
-Cookie.prototype.toString = function(){
-  return this.str;
-};
-
-},{"url":14}],55:[function(require,module,exports){
+},{"indexof":56}],55:[function(require,module,exports){
 // todo
 
 },{}],56:[function(require,module,exports){
@@ -19610,7 +19610,7 @@ var indexOf = function (xs, x) {
     return -1;
 };
 
-},{"stream":32,"buffer":3,"./response":58,"concat-stream":57,"uint8":7}],58:[function(require,module,exports){
+},{"stream":32,"buffer":3,"./response":58,"concat-stream":57,"uint8":8}],58:[function(require,module,exports){
 var Stream = require('stream');
 var Buffer = require('buffer').Buffer;
 var uint8 = require('uint8');
@@ -19670,7 +19670,6 @@ Response.prototype.getHeader = function (key) {
 };
 
 Response.prototype.handle = function (res) {
-  console.log('handle', res.readyState)
     if (res.readyState === 2 && capable.status2) {
         try {
             this.statusCode = res.status;
@@ -19723,8 +19722,6 @@ Response.prototype.setEncoding = function(enc) {
 
 Response.prototype._emitData = function (res) {
     var respBody = this.getResponse(res);
-    console.log(respBody)
-    debugger;
     if (!respBody) return;
     if (respBody.toString().match(/ArrayBuffer/)) {
         this.emit('data', uint8.uint8ToBuffer(new Uint8Array(respBody, this.offset)));
@@ -19741,5 +19738,5 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{"stream":32,"buffer":3,"uint8":7}]},{},[6])
+},{"stream":32,"buffer":3,"uint8":8}]},{},[6])
 ;
